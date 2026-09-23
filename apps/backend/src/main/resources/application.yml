@@ -39,6 +39,16 @@ wavelength:
     jwk-set-uri: ${JWT_JWK_SET_URI:https://auth.invalid/.well-known/jwks.json}
     audience: ${JWT_AUDIENCE:wavelength-api}
     auto-provision: ${AUTH_AUTO_PROVISION:true}
+  music:
+    token-keys: ${MUSIC_TOKEN_KEYS:}
+    public-base-url: ${MUSIC_PUBLIC_BASE_URL:}
+    web-return-uri: ${MUSIC_WEB_RETURN_URI:}
+    native-return-uri: ${MUSIC_NATIVE_RETURN_URI:wavelength://music/callback}
+    spotify-client-id: ${SPOTIFY_CLIENT_ID:}
+    spotify-redirect-uri: ${SPOTIFY_REDIRECT_URI:}
+    apple-team-id: ${APPLE_MUSIC_TEAM_ID:}
+    apple-key-id: ${APPLE_MUSIC_KEY_ID:}
+    apple-private-key-base64: ${APPLE_MUSIC_PRIVATE_KEY_BASE64:}
   cors-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081}
 logging:
   structured.format.console: logstash

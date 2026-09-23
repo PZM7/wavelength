@@ -1,6 +1,7 @@
 package com.wavelength.music;
 
 import com.wavelength.auth.CurrentUserProvider;
+import com.wavelength.music.connect.MusicCredentialService;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -10,19 +11,19 @@ import java.util.List;
 @RequestMapping("/api/v1/me")
 public class MusicController {
     private final CurrentUserProvider current;
-    private final MusicAccountRepository accounts;
+    private final MusicCredentialService credentials;
     private final MusicDnaService dna;
 
     public MusicController(
-            CurrentUserProvider current, MusicAccountRepository accounts, MusicDnaService dna) {
+            CurrentUserProvider current, MusicCredentialService credentials, MusicDnaService dna) {
         this.current = current;
-        this.accounts = accounts;
+        this.credentials = credentials;
         this.dna = dna;
     }
 
     @GetMapping("/music-accounts")
     public List<MusicAccountResponse> accounts() {
-        return accounts.findAllByUserId(current.get().getId()).stream()
+        return credentials.listForUser(current.get().getId()).stream()
                 .map(
                         account ->
                                 new MusicAccountResponse(

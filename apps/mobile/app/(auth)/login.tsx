@@ -24,6 +24,6 @@ export default function Login() {
     {!session.identityConfigured && <Body>El acceso real estará disponible al configurar el proyecto Supabase de Wavelength.</Body>}
     {error && <Text accessibilityRole="alert" style={{ color: colors.error }}>{error}</Text>}
     <Button secondary label="Explorar demo →" onPress={session.enterDemo} />
-    <Body>Spotify y Apple Music se conectarán por separado más adelante. La demo no guarda cambios.</Body>
+    <Body>Spotify y Apple Music se conectan por separado después de iniciar sesión. La demo no guarda cambios.</Body>
   </Screen>;
 }

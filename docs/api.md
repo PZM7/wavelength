@@ -17,6 +17,10 @@ ningún token hasta configurar uno válido. No usar ID tokens como access tokens
 | GET | /me | 200 perfil privado; provisioning configurado |
 | PATCH | /me | 200 perfil actualizado |
 | GET | /me/music-accounts | 200 lista segura (sin credenciales) |
+| GET | /me/music-connections/availability | 200 proveedores configurados |
+| POST | /me/music-connections/{provider}/start?target=web\|native | 200 authorizationUrl, returnUri |
+| POST | /me/music-connections/spotify/refresh | 204; renueva cuando está por caducar |
+| DELETE | /me/music-connections/{provider} | 204; borra las credenciales |
 | GET | /me/music-dna | 200 status, archetype nullable, scores, topArtists |
 | GET | /matches?limit=20&cursor=… | 200 `{matches, nextCursor}` |
 | GET | /users/{id} | 200 perfil público mínimo |
@@ -32,6 +36,12 @@ ningún token hasta configurar uno válido. No usar ID tokens como access tokens
 connections usa UUID como cursor, ordenado por ID (no cronológico). Pasar el
 `nextCursor` de la última respuesta, detenerse cuando sea null. Ambos endpoints
 excluyen conexiones/personas bloqueadas. Matches sin señales devuelve lista vacía.
+
+Los endpoints de inicio y desconexión musical requieren JWT Wavelength. Los
+callbacks públicos `/api/v1/music/spotify/callback` y
+`/api/v1/music/apple/complete` usan un estado temporal de un solo uso, vinculado
+al usuario que inició el flujo. Nunca devuelven tokens al cliente. Véase
+[proveedores](music-providers.md) para configuración y límites.
 
 ## Perfil y PATCH
 
@@ -95,6 +105,10 @@ ni panel de moderación. Aplicar rate limiting antes de exponer públicamente.
 INVALID_CONNECTION_STATE; 500 INTERNAL_ERROR. El cliente contempla también 429
 para el futuro filtro/gateway; actualmente no existe rate limiter backend.
 Cabecera X-Request-ID generada/validada y devuelta para correlación, sin stack traces.
+
+Conexiones musicales: 400 MUSIC_CONNECT_EXPIRED/MUSIC_AUTH_INVALID;
+409 MUSIC_RECONNECT_REQUIRED; 502 MUSIC_PROVIDER_ERROR;
+503 MUSIC_NOT_CONFIGURED. La respuesta nunca contiene credenciales del proveedor.
 
 ## Probar con un issuer real
 

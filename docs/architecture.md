@@ -23,8 +23,9 @@ flowchart TD
   JPA --> PG[(PostgreSQL + Flyway + pgvector)]
   SQL --> PG
   JOOQ --> PG
-  Music -.adaptadores futuros.-> Providers[Spotify / Apple Music]
+  Music -->|PKCE y MusicKit; tokens cifrados| Providers[Spotify / Apple Music]
   Cache[CacheStore opt-in] --> Redis[(Redis)]
+  Music -->|state de conexión, TTL 10 min| Redis
   Storage[ObjectStorage: URLs firmadas] -.implementación futura.-> S3[S3 / R2]
   Jobs[Spring Scheduling: sin jobs activos] -.futuro.-> Music
   Obs[Actuator / request ID / JSON logs / OTel opt-in] --- Security
@@ -90,8 +91,9 @@ emitidos pueden seguir siendo válidos hasta expirar. Véase [identidad](auth.md
 
 ## Límites conscientes
 
-- Sin OAuth musical, cifrado operativo/KMS ni escritura de tokens: solo esquema y
-  adaptadores vacíos. Implementar cifrado antes de habilitar cualquier conexión real.
+- Conexiones musicales y cifrado AES-GCM implementados, pero sin credenciales reales
+  ni KMS administrado. Los adaptadores de importación de gustos siguen vacíos; la
+  autorización por sí sola no genera afinidades. Véase [proveedores](music-providers.md).
 - Sin uploads S3/R2: interfaz; no bean que finja almacenar archivos.
 - Sin workers activos, colas, chat, feed, push, pagos, ML ni embeddings.
 - pgvector y tabla sin dimensión fija; definir modelo/versionado antes de índices.

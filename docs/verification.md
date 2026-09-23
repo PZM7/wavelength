@@ -34,6 +34,14 @@ clases bajo `Programación`; Docker Desktop no estaba disponible en esta ejecuci
 No se ha podido probar Google OAuth ni renovación contra Supabase porque aún no
 existe el proyecto. Véase [activación de identidad](auth.md).
 
+La conexión musical de Spotify y Apple Music del 23-09-2026 pasó las pruebas
+unitarias Java de PKCE/intercambio, MusicKit/developer token, estado temporal,
+cifrado y renovación de credenciales; también compiló el bootJar. Mobile pasó
+typecheck, 12 tests Vitest y exportación web/iOS/Android. Se recorrió en navegador
+la pantalla de cuentas de la demo: muestra ambos proveedores sin permitir enlaces
+reales. No hay credenciales de Spotify, Apple Music ni proyecto Supabase, así que
+el consentimiento y retorno con proveedores reales siguen sin verificar.
+
 ## Dependencias
 
 `npm audit` detecta 12 avisos moderados transitivos del ecosistema Expo 55:

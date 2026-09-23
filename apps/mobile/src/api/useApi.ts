@@ -19,6 +19,21 @@ export function useApi() {
       me: (): Promise<Profile> => demo ? Promise.resolve(demoProfile) : http('/api/v1/me'),
       dna: (): Promise<MusicDna> => demo ? Promise.resolve(demoDna) : http('/api/v1/me/music-dna'),
       accounts: (): Promise<MusicAccount[]> => demo ? Promise.resolve([]) : http('/api/v1/me/music-accounts'),
+      musicAvailability: (): Promise<{ spotify: boolean; appleMusic: boolean }> => demo
+        ? Promise.resolve({ spotify: false, appleMusic: false })
+        : http('/api/v1/me/music-connections/availability'),
+      startMusicConnection: (provider: MusicAccount['provider'], target: 'web' | 'native'): Promise<{ authorizationUrl: string; returnUri: string }> => {
+        realOnly();
+        return http(`/api/v1/me/music-connections/${provider}/start?target=${target}`, { method: 'POST' });
+      },
+      disconnectMusic: (provider: MusicAccount['provider']): Promise<void> => {
+        realOnly();
+        return http(`/api/v1/me/music-connections/${provider}`, { method: 'DELETE' });
+      },
+      refreshSpotify: (): Promise<void> => {
+        realOnly();
+        return http('/api/v1/me/music-connections/spotify/refresh', { method: 'POST' });
+      },
       matches: async (cursor?: string): Promise<MatchPage> => {
         if (demo) return demoMatches;
         const dto = await http<MatchPageDto>(`/api/v1/matches?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);

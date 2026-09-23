@@ -104,7 +104,10 @@ El `.env` raíz lo carga Compose; Expo carga apps/mobile/.env.
 | PORT | Puerto del backend, default 8080 |
 | TRACING_ENABLED | false por defecto; requiere configurar collector OTLP al activarlo |
 | EXPO_PUBLIC_API_URL | URL pública del backend; nunca poner secretos en EXPO_PUBLIC_* |
-| SPOTIFY_CLIENT_ID/SECRET, APPLE_MUSIC_TEAM_ID/KEY_ID | Reservadas; adaptadores actuales no las consumen |
+| MUSIC_TOKEN_KEYS | Claves AES-256-GCM del backend; necesarias para conectar música |
+| SPOTIFY_CLIENT_ID, SPOTIFY_REDIRECT_URI | OAuth PKCE de Spotify; URI exacta registrada en Spotify |
+| APPLE_MUSIC_TEAM_ID/KEY_ID/PRIVATE_KEY_BASE64 | Firma del developer token MusicKit; solo backend |
+| MUSIC_PUBLIC_BASE_URL, MUSIC_WEB_RETURN_URI, MUSIC_NATIVE_RETURN_URI | Página MusicKit y retorno seguro a la app |
 | S3_ENDPOINT/BUCKET/ACCESS_KEY/SECRET_KEY | Reservadas; no hay uploads implementados |
 
 Sin configurar JWT, backend/Swagger/health arrancan y las rutas privadas rechazan
@@ -148,12 +151,13 @@ para resultados comprobados y límites.
 
 ## Implementado y reservado
 
-**Real:** Google OAuth y renovación de sesión (pendientes de credenciales reales),
+**Real:** Google OAuth y renovación de sesión, conexión musical con Spotify PKCE y
+Apple Music MusicKit, cifrado de tokens y renovación Spotify (pendientes de credenciales reales),
 JWT, provisioning, perfil/validación, Flyway/constraints, catálogo canónico,
 afinidades, matching determinista paginado, conexiones, bloqueos, reports, JSON logs,
 OpenAPI dev, health, tests PostgreSQL, UI navegable y cliente HTTP tipado.
 
-**Stub/reserva explícita:** OAuth Spotify/Apple, arquetipos DNA,
+**Stub/reserva explícita:** importación de gustos musicales y arquetipos DNA,
 S3/R2, jobs, actividad, conciertos funcionales, embeddings, rate limiting y analytics.
 La demo mobile no llama al backend ni persiste cambios. El backend DNA usa artistas
 reales almacenados y devuelve dimensiones sin calcular como ausentes, no como scores falsos.
@@ -164,7 +168,7 @@ Decisiones/deuda: [arquitectura](docs/architecture.md), [base de datos](docs/dat
 ## Siguientes cinco pasos
 
 1. Crear proyecto Supabase, configurar Google y verificar login/refresh en dispositivo.
-2. Implementar OAuth Spotify y cifrado/rotación de tokens, luego Apple Music.
+2. Configurar credenciales Spotify/Apple y probar ambos consentimientos en web y dispositivo.
 3. Crear sync idempotente, reconciliación canónica y cálculo documentado de afinidades/DNA.
 4. Validar experiencia con dispositivos reales y añadir tests E2E del flujo autenticado.
 5. Preparar piloto privado: rate limiting, moderación, retención/borrado de datos,

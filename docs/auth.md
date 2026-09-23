@@ -45,7 +45,8 @@ probar el flujo local con la URL web añadida a la allowlist.
   en cada petición.
 - La demo sigue aislada: no usa credenciales ni hace mutaciones al backend.
   Spotify y Apple Music son integraciones musicales distintas del proveedor de
-  identidad y siguen pendientes.
+  identidad. Sus flujos están implementados y requieren credenciales propias para
+  activarse; véase [conexiones musicales](music-providers.md).
 
 Verificación con proyecto real: entrar con Google, consultar `/api/v1/me`, forzar
 la renovación de un token expirado, reiniciar la app nativa para comprobar que la

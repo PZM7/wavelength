@@ -77,7 +77,11 @@ public class SecurityConfig {
                             auth.requestMatchers(
                                             "/api/v1/health",
                                             "/actuator/health",
-                                            "/actuator/health/**")
+                                            "/actuator/health/**",
+                                            "/api/v1/music/spotify/callback",
+                                            "/api/v1/music/apple/complete",
+                                            "/music/apple/connect",
+                                            "/music/apple-connect.js")
                                     .permitAll();
                             if (environment.acceptsProfiles(Profiles.of("dev"))) {
                                 auth.requestMatchers(
