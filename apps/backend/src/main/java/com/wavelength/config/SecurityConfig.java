@@ -15,6 +15,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.*;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
@@ -39,7 +40,12 @@ public class SecurityConfig {
             @Value("${wavelength.auth.issuer}") String issuer,
             @Value("${wavelength.auth.jwk-set-uri}") String jwks,
             @Value("${wavelength.auth.audience}") String audience) {
-        var decoder = NimbusJwtDecoder.withJwkSetUri(jwks).build();
+        var decoder = NimbusJwtDecoder.withJwkSetUri(jwks)
+                .jwsAlgorithms(algorithms -> {
+                    algorithms.add(SignatureAlgorithm.RS256);
+                    algorithms.add(SignatureAlgorithm.ES256);
+                })
+                .build();
         OAuth2TokenValidator<Jwt> claims =
                 jwt -> {
                     if (jwt.getAudience() != null

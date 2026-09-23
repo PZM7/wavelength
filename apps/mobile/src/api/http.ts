@@ -9,22 +9,27 @@ const messages: Record<number, string> = {
   429: 'Demasiadas solicitudes. Inténtalo más tarde.',
   500: 'El servidor no está disponible. Inténtalo de nuevo.',
 };
-type ClientOptions = { baseUrl: string; getToken: () => Promise<string | null>; onUnauthorized: () => Promise<void> };
+type ClientOptions = { baseUrl: string; getToken: (forceRefresh?: boolean) => Promise<string | null>; onUnauthorized: () => Promise<void> };
 export function createHttpClient({ baseUrl, getToken, onUnauthorized }: ClientOptions) {
   return async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const token = await getToken();
-    const headers = new Headers(init.headers);
-    headers.set('Accept', 'application/json');
-    if (init.body) headers.set('Content-Type', 'application/json');
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-    // RN's AbortSignal polyfill does not implement AbortSignal.timeout().
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    let response: Response;
-    try {
-      response = await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, { ...init, headers, signal: init.signal ?? controller.signal });
-    } catch { throw new ApiError(0, 'NETWORK_ERROR', 'No se ha podido conectar. Comprueba tu conexión.'); }
-    finally { clearTimeout(timeout); }
+    async function send(token: string | null): Promise<Response> {
+      const headers = new Headers(init.headers);
+      headers.set('Accept', 'application/json');
+      if (init.body) headers.set('Content-Type', 'application/json');
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+      // RN's AbortSignal polyfill does not implement AbortSignal.timeout().
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        return await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, { ...init, headers, signal: init.signal ?? controller.signal });
+      } catch { throw new ApiError(0, 'NETWORK_ERROR', 'No se ha podido conectar. Comprueba tu conexión.'); }
+      finally { clearTimeout(timeout); }
+    }
+    let response = await send(await getToken());
+    if (response.status === 401) {
+      const refreshedToken = await getToken(true);
+      if (refreshedToken) response = await send(refreshedToken);
+    }
     if (!response.ok) {
       if (response.status === 401) await onUnauthorized();
       // Do not show arbitrary server/proxy bodies or log credentials.

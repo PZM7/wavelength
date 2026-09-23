@@ -9,6 +9,7 @@ export default function Profile() {
   const api = useApi(); const session = useSession(); const queries = useQueryClient();
   const query = useQuery({ queryKey: ['me'], queryFn: api.me });
   const [displayName, setDisplayName] = useState(''); const [discoverable, setDiscoverable] = useState(false);
+  const [signOutError, setSignOutError] = useState<Error | null>(null);
   useEffect(() => { if (query.data) { setDisplayName(query.data.displayName ?? ''); setDiscoverable(query.data.discoverable); } }, [query.data]);
   const mutation = useMutation({ mutationFn: () => api.patchProfile({ displayName: displayName || null, discoverable }), onSuccess: profile => { queries.setQueryData(['me'], profile); } });
   return <Screen><Title>Tu perfil.{ '\n' }Tus reglas.</Title><Body>Elige cómo te ven las personas que comparten tu música.</Body>
@@ -20,6 +21,7 @@ export default function Profile() {
     </Card>}
     <QueryState pending={false} error={mutation.error} />
     {session.mode === 'demo' && <Body>La demo permite explorar. Los cambios no se guardan.</Body>}
-    <Button secondary label={session.mode === 'demo' ? 'Salir de la demo' : 'Cerrar sesión'} onPress={() => void session.signOut()} />
+    <Button secondary label={session.mode === 'demo' ? 'Salir de la demo' : 'Cerrar sesión'} onPress={() => void session.signOut().catch(error => setSignOutError(error instanceof Error ? error : new Error('No se ha podido cerrar la sesión.')))} />
+    <QueryState pending={false} error={signOutError} />
   </Screen>;
 }

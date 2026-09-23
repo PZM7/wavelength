@@ -6,7 +6,7 @@ OpenAPI JSON: `/v3/api-docs`. Desactivados sin perfil dev.
 
 Todas las rutas requieren `Authorization: Bearer <JWT>` salvo health y OpenAPI
 en dev. Actuator público: solo `/actuator/health` sin detalles. Validación JWT:
-RS256 por JWKS, issuer exacto, audience configurada, exp obligatorio, nbf si está
+RS256 o ES256 por JWKS, issuer exacto, audience configurada, exp obligatorio, nbf si está
 presente, sub no vacío (máximo 255). Tolerancia temporal estándar Spring de 60 s.
 JWKS se obtiene de forma perezosa: el backend arranca sin proveedor, pero no acepta
 ningún token hasta configurar uno válido. No usar ID tokens como access tokens.
@@ -98,8 +98,9 @@ Cabecera X-Request-ID generada/validada y devuelta para correlación, sin stack 
 
 ## Probar con un issuer real
 
-Configurar las 3 variables JWT, obtener un access token con audiencia wavelength-api
-mediante el proveedor elegido y guardarlo en una variable de shell, no en Git.
+Configurar las 3 variables JWT para el proyecto Supabase (audiencia
+`authenticated`), obtener un access token desde la app y guardarlo en una variable
+de shell, no en Git. Véase [identidad](auth.md).
 
 ```powershell
 $headers = @{ Authorization = "Bearer $env:WAVELENGTH_ACCESS_TOKEN" }

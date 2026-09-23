@@ -10,7 +10,7 @@ Véase [informe de migración](java-migration.md).
   Incluyen JWT firmado y JWKS temporal (firma/issuer/audience/exp/sub), provisioning,
   PATCH/null/constraints, SQL matching vs Java, paginación, propiedad de solicitudes,
   bloqueos bidireccionales, privacidad, reports y carrera bloque/request.
-- Mobile: TypeScript strict, 8 tests Vitest de HTTP, exportación Expo de web y
+- Mobile: TypeScript strict, 8 tests Vitest de HTTP de la base, exportación Expo de web y
   bytecode Hermes para Android/iOS. Expo Doctor: 20/20 comprobaciones.
 - Navegación web manual: welcome → login placeholder → demo → home → Music DNA →
   matches → perfil ajeno → perfil propio → cuentas musicales → salir. Acceso directo
@@ -24,8 +24,15 @@ correctos prueban el pipeline JS/TS/Hermes, no toda la integración nativa. Tamp
 se han probado servicios OAuth externos, S3, analytics ni despliegue remoto porque
 sus adaptadores/credenciales no forman parte de esta base.
 
-GitHub Actions queda configurado, pero no se ha ejecutado en un repositorio remoto.
-No se ha creado commit ni publicado código.
+El código base se publicó en el repositorio privado de GitHub. GitHub Actions quedó
+configurado; comprobar su estado en el repositorio antes de depender de él.
+
+La integración de identidad del 23-09-2026 pasó 12 tests móviles, typecheck,
+exportación Expo web/iOS/Android y suite unitaria Java 21. La suite Java se ejecutó
+mediante una unidad `subst` temporal con ruta ASCII por el problema de carga de
+clases bajo `Programación`; Docker Desktop no estaba disponible en esta ejecución.
+No se ha podido probar Google OAuth ni renovación contra Supabase porque aún no
+existe el proyecto. Véase [activación de identidad](auth.md).
 
 ## Dependencias
 

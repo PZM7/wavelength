@@ -8,7 +8,7 @@ servicio. Los paquetes comunes contienen únicamente infraestructura compartida.
 ```mermaid
 flowchart TD
   Mobile[Expo / React Native / Router] --> Query[TanStack Query + cliente HTTP]
-  Identity[Proveedor de identidad externo] -->|JWT RS256| Query
+  Identity[Supabase Auth / Google] -->|JWT RS256 o ES256| Query
   Query -->|REST /api/v1 + Bearer| Security[Spring Security: firma, iss, aud, exp, sub]
   Security --> Auth[CurrentUserProvider / provisioning]
   Auth --> Users[Users]
@@ -79,11 +79,14 @@ cache para evitar resultados obsoletos tras un bloqueo.
 Router controla navegación y guardas de sesión. TanStack Query contiene server
 state; formularios usan estado local. HTTP central añade JWT, timeout y errores
 normalizados. SecureStore nativo, memoria en web, ninguna credencial en AsyncStorage
-o localStorage. Cerrar sesión cancela y limpia queries. Un 401 elimina la sesión.
+o localStorage. Cerrar sesión cancela y limpia queries. Un 401 renueva el access token
+y reintenta una vez; si sigue fallando, elimina la sesión.
 
 La demo contiene fixtures aislados, banner visible y ninguna mutación al backend.
-El adaptador de identidad real debe llamar `session.signIn(accessToken)` y gestionar
-renovación/revocación mediante el SDK elegido. El placeholder no finge autenticar.
+Supabase Auth gestiona Google OAuth, persistencia y renovación; el backend solo
+valida firma y claims del access token. La configuración real del proyecto está
+pendiente. Cerrar sesión usa el alcance local de Supabase; los access tokens
+emitidos pueden seguir siendo válidos hasta expirar. Véase [identidad](auth.md).
 
 ## Límites conscientes
 

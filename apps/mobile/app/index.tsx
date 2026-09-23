@@ -8,7 +8,7 @@ export default function Welcome() {
   const session = useSession();
   if (!session.ready) return <Screen><Body>Cargando…</Body></Screen>;
   if (session.mode !== 'anonymous') return <Redirect href="/(app)/home" />;
-  return <Screen right={<Pressable onPress={session.enterDemo} accessibilityRole="button"><Text style={local.skip}>Explorar demo</Text></Pressable>} contentStyle={local.content}>
+  return <Screen right={<Pressable onPress={() => router.push('/(auth)/login')} accessibilityRole="button"><Text style={local.skip}>Entrar</Text></Pressable>} contentStyle={local.content}>
     <View style={local.art} accessibilityLabel="Ilustración de ondas musicales moradas y rosas">
       <View style={local.outerGlow}><View style={local.innerGlow}>
         <LinearGradient colors={['#513A87', '#B24ABA', '#E94B9C']} style={local.orb}><Text style={local.note}>♫</Text></LinearGradient>
@@ -17,7 +17,7 @@ export default function Welcome() {
     <Title style={local.heroTitle}>Tu música ya dice quién eres.</Title>
     <Body>Conecta tu historial musical. Conviértelo en identidad y conoce a quienes escuchan como tú.</Body>
     <View style={local.stats}><Text style={local.stat}><Text style={local.statValue}>DNA</Text>{'\n'}Tu identidad</Text><Text style={local.stat}><Text style={local.statValue}>94%</Text>{'\n'}Afinidad</Text><Text style={local.stat}><Text style={local.statValue}>LIVE</Text>{'\n'}Nuevos sonidos</Text></View>
-    <View style={local.actions}><Button label="Conectar Spotify" onPress={() => router.push('/(auth)/login')} /><Button secondary label="Conectar Apple Music" onPress={() => router.push('/(auth)/login')} /></View>
+    <View style={local.actions}><Button label="Continuar con Google" onPress={() => router.push('/(auth)/login')} /><Button secondary label="Explorar demo" onPress={session.enterDemo} /></View>
     <Text style={local.privacy}>Privado por defecto · Tú eliges qué compartir</Text>
   </Screen>;
 }

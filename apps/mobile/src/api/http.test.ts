@@ -13,6 +13,33 @@ describe('HTTP boundary', () => {
     expect(new Headers(init.headers).get('Authorization')).toBe('Bearer test-token');
     expect(new Headers(init.headers).get('Content-Type')).toBe('application/json');
   });
+  it('refreshes and retries a rejected access token once', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response('{"id":"one"}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const getToken = vi.fn(async (forceRefresh?: boolean) => forceRefresh ? 'new-token' : 'old-token');
+    const onUnauthorized = vi.fn(async () => {});
+    const request = createHttpClient({ baseUrl: 'https://api.example', getToken, onUnauthorized });
+    expect(await request('/api/v1/me')).toEqual({ id: 'one' });
+    expect(getToken).toHaveBeenCalledWith(true);
+    expect(new Headers((fetchMock.mock.calls[0] as [string, RequestInit])[1].headers).get('Authorization')).toBe('Bearer old-token');
+    expect(new Headers((fetchMock.mock.calls[1] as [string, RequestInit])[1].headers).get('Authorization')).toBe('Bearer new-token');
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+  it('ends the session when the refreshed token is also rejected', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const onUnauthorized = vi.fn(async () => {});
+    const request = createHttpClient({
+      baseUrl: 'https://api.example',
+      getToken: async (forceRefresh?: boolean) => forceRefresh ? 'new-token' : 'old-token',
+      onUnauthorized,
+    });
+    await expect(request('/api/v1/me')).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
   it.each([401, 403, 404, 429, 500])('maps %i without exposing server internals', async status => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('secret internal response', { status })));
     const onUnauthorized = vi.fn(async () => {});

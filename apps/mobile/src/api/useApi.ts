@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useSession } from '../features/auth/SessionProvider';
-import { tokenStore } from '../features/auth/tokenStore';
 import { createHttpClient } from './http';
 import type { MatchPageDto } from './contracts';
 import type { Profile, ProfilePatch, MusicAccount, MusicDna, User, Connection, MatchPage } from '../types/models';
@@ -10,7 +9,11 @@ export function useApi() {
   const session = useSession();
   return useMemo(() => {
     const demo = session.mode === 'demo';
-    const http = createHttpClient({ baseUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080', getToken: tokenStore.get, onUnauthorized: session.signOut });
+    const http = createHttpClient({
+      baseUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080',
+      getToken: session.getAccessToken,
+      onUnauthorized: async () => { try { await session.signOut(); } catch { /* Preserve the 401 for the caller. */ } },
+    });
     const realOnly = () => { if (demo) throw new Error('Esta acción necesita una sesión real. La demo no guarda cambios.'); };
     return {
       me: (): Promise<Profile> => demo ? Promise.resolve(demoProfile) : http('/api/v1/me'),

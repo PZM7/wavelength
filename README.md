@@ -38,8 +38,9 @@ docker-compose.yml
 - Node.js 22.13+ o 24 LTS y npm. Dependencias fijadas en package-lock.json.
 - Java **21** para Gradle local (el wrapper 8.14.3 no corre con Java 25).
   Alternativa: ejecutar todo el backend con Docker, sin Java local.
-- Expo Go compatible con SDK 55 o development build. Android Emulator/iOS Simulator
-  son opcionales; iOS nativo requiere macOS/Xcode o EAS. Web sirve para explorar UI.
+- Expo Go compatible con SDK 55 para explorar la UI; Google OAuth nativo requiere
+  una development build. Android Emulator/iOS Simulator son opcionales; iOS nativo
+  requiere macOS/Xcode o EAS. Web sirve para explorar UI.
 
 ## Arranque rápido
 
@@ -63,8 +64,9 @@ El puerto PostgreSQL interno sigue siendo 5432. Solo DB/Redis se publican en loo
 En Expo pulsa `w` para web, `a` para Android, o escanea QR con una versión compatible.
 En dispositivo físico usa la IP LAN del ordenador en EXPO_PUBLIC_API_URL; en emulador
 Android `http://10.0.2.2:8080`. El servidor debe ser accesible por la red del dispositivo.
-La app ofrece demo sin cuenta y señala los datos ficticios. Login real queda como
-placeholder; no hay formulario de contraseñas ni conexión OAuth musical simulada.
+La app ofrece demo sin cuenta y señala los datos ficticios. El acceso con Google
+está implementado, pero necesita un proyecto Supabase para activarse. Consultar
+[identidad y sesión](docs/auth.md) para la configuración y las pruebas pendientes.
 
 ## Backend fuera de Docker
 
@@ -92,7 +94,8 @@ El `.env` raíz lo carga Compose; Expo carga apps/mobile/.env.
 | REDIS_HOST, REDIS_PORT | Redis (localhost:6379; Compose usa hostname redis) |
 | JWT_ISSUER_URI | Issuer exacto del access token externo |
 | JWT_JWK_SET_URI | Endpoint HTTPS de claves públicas del proveedor |
-| JWT_AUDIENCE | Audiencia requerida, default wavelength-api |
+| JWT_AUDIENCE | Audiencia requerida; `authenticated` para Supabase |
+| EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY | Proyecto Supabase de la app; la clave publicable no es un secreto |
 | AUTH_AUTO_PROVISION | true crea usuario al primer JWT válido; false requiere alta previa |
 | SPRING_PROFILES_ACTIVE | dev habilita OpenAPI y permite seed; omitir en producción |
 | DEV_SEED_ENABLED | false por defecto; true + dev añade datos ficticios |
@@ -105,8 +108,9 @@ El `.env` raíz lo carga Compose; Expo carga apps/mobile/.env.
 | S3_ENDPOINT/BUCKET/ACCESS_KEY/SECRET_KEY | Reservadas; no hay uploads implementados |
 
 Sin configurar JWT, backend/Swagger/health arrancan y las rutas privadas rechazan
-acceso. No hay credenciales reales en el repositorio. Consultar [API](docs/api.md)
-para conectar un issuer y probar `/me` y `/matches`.
+acceso. No hay credenciales reales en el repositorio. Consultar
+[identidad y sesión](docs/auth.md) para configurar Supabase y [API](docs/api.md)
+para probar `/me` y `/matches`.
 
 Seed: editar `.env` y poner DEV_SEED_ENABLED=true, opcionalmente el subject real de
 Marc **antes del primer seed**, después `docker compose up -d`. Usuarios: Marc,
@@ -144,11 +148,12 @@ para resultados comprobados y límites.
 
 ## Implementado y reservado
 
-**Real:** JWT, provisioning, perfil/validación, Flyway/constraints, catálogo canónico,
+**Real:** Google OAuth y renovación de sesión (pendientes de credenciales reales),
+JWT, provisioning, perfil/validación, Flyway/constraints, catálogo canónico,
 afinidades, matching determinista paginado, conexiones, bloqueos, reports, JSON logs,
 OpenAPI dev, health, tests PostgreSQL, UI navegable y cliente HTTP tipado.
 
-**Stub/reserva explícita:** OAuth Spotify/Apple, login mobile externo, arquetipos DNA,
+**Stub/reserva explícita:** OAuth Spotify/Apple, arquetipos DNA,
 S3/R2, jobs, actividad, conciertos funcionales, embeddings, rate limiting y analytics.
 La demo mobile no llama al backend ni persiste cambios. El backend DNA usa artistas
 reales almacenados y devuelve dimensiones sin calcular como ausentes, no como scores falsos.
@@ -158,7 +163,7 @@ Decisiones/deuda: [arquitectura](docs/architecture.md), [base de datos](docs/dat
 
 ## Siguientes cinco pasos
 
-1. Elegir proveedor de identidad e integrar login/refresh/revocación mobile y audiencia JWT.
+1. Crear proyecto Supabase, configurar Google y verificar login/refresh en dispositivo.
 2. Implementar OAuth Spotify y cifrado/rotación de tokens, luego Apple Music.
 3. Crear sync idempotente, reconciliación canónica y cálculo documentado de afinidades/DNA.
 4. Validar experiencia con dispositivos reales y añadir tests E2E del flujo autenticado.
