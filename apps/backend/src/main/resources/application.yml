@@ -4,7 +4,7 @@ spring:
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:55432/wavelength}
     username: ${DATABASE_USERNAME:wavelength}
-    password: ${DATABASE_PASSWORD:wavelength_dev}
+    password: ${DATABASE_PASSWORD}
   jpa:
     open-in-view: false
     hibernate:

@@ -64,13 +64,9 @@ huella, por lo que no se afirma unicidad de la cuenta Apple entre usuarios.
 La primera cifra nuevas credenciales; las demás permiten leer valores anteriores.
 Cada token usa AES-256-GCM con nonce aleatorio y datos autenticados que incluyen
 el ID de la cuenta, proveedor y tipo de token. Las columnas `*_encrypted` nunca
-guardan texto plano. Para generar una clave en PowerShell:
-
-```powershell
-$bytes = [byte[]]::new(32)
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-[Convert]::ToBase64String($bytes)
-```
+guardan texto plano. `node infra/init-dev-env.mjs` genera una clave local aleatoria
+en el `.env` ignorado por Git, sin imprimir su valor. Si `.env` ya existe, el
+script no cambia la clave ni la contraseña.
 
 Ejemplo de rotación: cambiar `MUSIC_TOKEN_KEYS=v1:<old>` por
 `MUSIC_TOKEN_KEYS=v2:<new>,v1:<old>`. Las credenciales se recifran al listar las

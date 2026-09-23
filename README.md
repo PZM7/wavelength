@@ -47,7 +47,7 @@ docker-compose.yml
 Desde la raíz, PowerShell:
 
 ```powershell
-Copy-Item .env.example .env
+node infra/init-dev-env.mjs
 docker compose up -d --build
 Invoke-RestMethod http://localhost:8080/api/v1/health
 npm ci
@@ -55,8 +55,9 @@ Copy-Item apps/mobile/.env.example apps/mobile/.env
 npm run mobile
 ```
 
-En bash usar `cp` en lugar de `Copy-Item`. `docker compose up` también funciona
-en primer plano. Flyway crea las tablas al arrancar; health devuelve `{"status":"ok"}`.
+El generador crea `.env` una sola vez con una contraseña y una clave de cifrado aleatorias;
+si ya existe, lo deja intacto. También funciona en bash. `docker compose up` puede
+ejecutarse en primer plano. Flyway crea las tablas al arrancar; health devuelve `{"status":"ok"}`.
 Swagger dev: <http://localhost:8080/swagger-ui/index.html>.
 PostgreSQL local: `localhost:55432`; Redis: `localhost:6379`; backend: `localhost:8080`.
 El puerto PostgreSQL interno sigue siendo 5432. Solo DB/Redis se publican en loopback.
@@ -80,9 +81,9 @@ cd apps/backend
 ```
 
 Linux/macOS: `./gradlew bootRun` con JAVA_HOME apuntando a Java 21.
-Si Git no conserva ejecución, `chmod +x gradlew`. Variables predeterminadas locales
-coinciden con Compose. Spring **no carga** `.env` automáticamente: para bootRun
-exportar las variables de apps/backend/.env.example en el shell o el IDE.
+Si Git no conserva ejecución, `chmod +x gradlew`. Spring **no carga** `.env`
+automáticamente: para bootRun exportar las variables de apps/backend/.env.example
+en el shell o el IDE, usando la contraseña generada en el `.env` raíz.
 El `.env` raíz lo carga Compose; Expo carga apps/mobile/.env.
 
 ## Configuración
@@ -90,7 +91,7 @@ El `.env` raíz lo carga Compose; Expo carga apps/mobile/.env.
 | Variables | Función |
 | --- | --- |
 | DATABASE_URL | JDBC PostgreSQL (`jdbc:postgresql://host:port/db`), no URL `postgres://` |
-| DATABASE_USERNAME, DATABASE_PASSWORD | Credenciales DB; las defaults son solo desarrollo |
+| DATABASE_USERNAME, DATABASE_PASSWORD | Credenciales DB; la contraseña debe configurarse fuera de Git |
 | REDIS_HOST, REDIS_PORT | Redis (localhost:6379; Compose usa hostname redis) |
 | JWT_ISSUER_URI | Issuer exacto del access token externo |
 | JWT_JWK_SET_URI | Endpoint HTTPS de claves públicas del proveedor |
@@ -111,7 +112,9 @@ El `.env` raíz lo carga Compose; Expo carga apps/mobile/.env.
 | S3_ENDPOINT/BUCKET/ACCESS_KEY/SECRET_KEY | Reservadas; no hay uploads implementados |
 
 Sin configurar JWT, backend/Swagger/health arrancan y las rutas privadas rechazan
-acceso. No hay credenciales reales en el repositorio. Consultar
+acceso. Los secretos locales se guardan en archivos ignorados por Git; no se deben
+poner claves privadas ni tokens en `EXPO_PUBLIC_*` ni en archivos versionados.
+El CI analiza el historial Git en cada push y pull request. Consultar
 [identidad y sesión](docs/auth.md) para configurar Supabase y [API](docs/api.md)
 para probar `/me` y `/matches`.
 
