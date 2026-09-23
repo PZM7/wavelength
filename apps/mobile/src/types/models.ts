@@ -1,0 +1,8 @@
+export type User = { id: string; username: string | null; displayName: string | null; avatarUrl: string | null };
+export type Profile = User & { city: string | null; birthDate: string | null; discoverable: boolean; createdAt: string; updatedAt: string };
+export type ProfilePatch = Partial<Pick<Profile, 'username' | 'displayName' | 'avatarUrl' | 'city' | 'birthDate' | 'discoverable'>>;
+export type Match = { user: User; compatibility: number; reasons: { type: string; label: string; count?: number }[] };
+export type MatchPage = { matches: Match[]; nextCursor: string | null };
+export type MusicDna = { status: 'INSUFFICIENT_DATA' | 'ARTIST_SIGNALS_ONLY' | 'DEMO'; archetype: string | null; scores: Record<string, number>; topArtists: { id: string; name: string; weight: number }[] };
+export type MusicAccount = { id: string; provider: 'SPOTIFY' | 'APPLE_MUSIC'; createdAt: string };
+export type Connection = { id: string; requesterId: string; receiverId: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; createdAt: string; updatedAt: string };

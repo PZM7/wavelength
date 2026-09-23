@@ -1,0 +1,71 @@
+{
+  "profile" : {
+    "id" : "00000000-0000-0000-0000-000000000101",
+    "username" : "marc",
+    "displayName" : null,
+    "avatarUrl" : null,
+    "city" : null,
+    "birthDate" : "1998-06-15",
+    "discoverable" : false,
+    "createdAt" : "2026-01-02T03:04:05Z",
+    "updatedAt" : "2026-01-02T03:04:05Z"
+  },
+  "publicUser" : {
+    "id" : "00000000-0000-0000-0000-000000000101",
+    "username" : "marc",
+    "displayName" : "Marc",
+    "avatarUrl" : null
+  },
+  "musicAccount" : {
+    "id" : "00000000-0000-0000-0000-000000000101",
+    "provider" : "APPLE_MUSIC",
+    "createdAt" : "2026-01-02T03:04:05Z"
+  },
+  "dna" : {
+    "status" : "ARTIST_SIGNALS_ONLY",
+    "archetype" : null,
+    "scores" : { },
+    "topArtists" : [ {
+      "id" : "00000000-0000-0000-0000-000000000101",
+      "name" : "Sampha",
+      "weight" : 0.5
+    } ]
+  },
+  "matches" : {
+    "matches" : [ {
+      "user" : {
+        "id" : "00000000-0000-0000-0000-000000000101",
+        "username" : "marc",
+        "displayName" : "Marc",
+        "avatarUrl" : null
+      },
+      "compatibility" : 0.5,
+      "reasons" : [ {
+        "type" : "SHARED_ARTISTS",
+        "label" : "1 shared artists",
+        "count" : 1
+      } ]
+    } ],
+    "nextCursor" : null
+  },
+  "connections" : {
+    "connections" : [ {
+      "id" : "00000000-0000-0000-0000-000000000101",
+      "requesterId" : "00000000-0000-0000-0000-000000000101",
+      "receiverId" : "00000000-0000-0000-0000-000000000102",
+      "status" : "PENDING",
+      "createdAt" : "2026-01-02T03:04:05Z",
+      "updatedAt" : "2026-01-02T03:04:05Z"
+    } ],
+    "nextCursor" : null
+  },
+  "report" : {
+    "id" : "00000000-0000-0000-0000-000000000101"
+  },
+  "error" : {
+    "code" : "USER_NOT_FOUND",
+    "message" : "User not found",
+    "timestamp" : "2026-01-02T03:04:05Z",
+    "path" : "/api/v1/users/00000000-0000-0000-0000-000000000101"
+  }
+}

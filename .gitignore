@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+**/build/
+**/.gradle/
+**/.kotlin/
+**/node_modules/
+**/.expo/
+**/dist/
+.tools/
+*.log
+.DS_Store
+coverage/

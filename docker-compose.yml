@@ -1,0 +1,48 @@
+name: wavelength
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: wavelength
+      POSTGRES_USER: wavelength
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-wavelength_dev}
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wavelength -d wavelength"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    ports: ["127.0.0.1:6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  backend:
+    build: ./apps/backend
+    ports: ["8080:8080"]
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DATABASE_URL: jdbc:postgresql://postgres:5432/wavelength
+      DATABASE_USERNAME: wavelength
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-wavelength_dev}
+      REDIS_HOST: redis
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-https://auth.invalid/}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-https://auth.invalid/.well-known/jwks.json}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-wavelength-api}
+      DEV_SEED_ENABLED: ${DEV_SEED_ENABLED:-false}
+      DEV_SEED_AUTH_SUBJECT: ${DEV_SEED_AUTH_SUBJECT:-dev|marc}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+volumes:
+  postgres_data:

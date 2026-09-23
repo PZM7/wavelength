@@ -1,0 +1,10 @@
+{
+  "name": "wavelength",
+  "private": true,
+  "workspaces": ["apps/mobile"],
+  "scripts": {
+    "mobile": "npm run start --workspace @wavelength/mobile",
+    "typecheck": "npm run typecheck --workspace @wavelength/mobile",
+    "test:mobile": "npm run test --workspace @wavelength/mobile"
+  }
+}

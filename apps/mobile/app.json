@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Wavelength",
+    "slug": "wavelength",
+    "scheme": "wavelength",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "plugins": ["expo-router", "expo-secure-store"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.wavelength.mobile" },
+    "android": { "package": "com.wavelength.mobile" },
+    "web": { "bundler": "metro", "output": "single" }
+  }
+}
