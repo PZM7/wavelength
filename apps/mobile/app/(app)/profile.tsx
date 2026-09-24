@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Text, TextInput, Switch, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../../src/api/useApi';
+import { router } from 'expo-router';
 import { useSession } from '../../src/features/auth/SessionProvider';
 import { Screen, Title, Body, Card, Button, QueryState, styles, colors } from '../../src/components/ui';
 
@@ -20,6 +21,7 @@ export default function Profile() {
       {mutation.isSuccess && <Body>Perfil guardado.</Body>}
     </Card>}
     <QueryState pending={false} error={mutation.error} />
+    <Button secondary label="Mis artistas favoritos" onPress={() => router.push('/(app)/favorite-artists')} />
     {session.mode === 'demo' && <Body>La demo permite explorar. Los cambios no se guardan.</Body>}
     <Button secondary label={session.mode === 'demo' ? 'Salir de la demo' : 'Cerrar sesión'} onPress={() => void session.signOut().catch(error => setSignOutError(error instanceof Error ? error : new Error('No se ha podido cerrar la sesión.')))} />
     <QueryState pending={false} error={signOutError} />

@@ -11,6 +11,7 @@ UUID internos, defaults `gen_random_uuid()`. Sin dependencia de IDs musicales.
 | V3 | matches; pareja ordenada, scores 0–1, señales ausentes nullable |
 | V4 | connections, blocks, reports; pareja única no dirigida, no self-links |
 | V5 | concerts, concert_attendances; identidad de evento por proveedor |
+| V6 | user_manual_artist_preferences; elección separada de las señales importadas |
 
 Índices cubren FKs, filtros por usuario/proveedor y ordenaciones de matching,
 solicitudes y conciertos. Nombres normalizados de artistas no son únicos: puede
@@ -23,10 +24,14 @@ y valores infinitos por estos checks. La PK es `(user_id, artist_id/track_id)`.
 ProviderArtist/Track tienen UNIQUE(provider, provider_id). Una cuenta de cada
 proveedor por usuario; una cuenta externa no puede pertenecer a varios usuarios.
 Añadir proveedor requiere ampliar enum y CHECK mediante una nueva migración.
+La selección manual tiene PK `(user_id, artist_id)` y se combina en consultas con
+afinidades importadas tomando el mayor peso por artista. No modifica las tablas de
+afinidades del proveedor.
 
-Tokens solo en columnas cifradas y sin APIs de escritura en esta fase. No son
-cifrado por sí solas: el adaptador futuro debe cifrar antes de persistir, con una
-clave fuera de la BD, nonce único, versionado y rotación. No almacenar plaintext.
+Los tokens musicales se escriben solo mediante el servicio de credenciales, que
+los cifra con AES-256-GCM antes de persistir. La clave vive fuera de la BD y del
+repositorio; cada cifrado usa un nonce nuevo y las claves pueden rotarse. No
+almacenar plaintext.
 
 Las cascadas limpian datos dependientes de usuarios; referencias canónicas a
 artistas evitan borrar catálogo que tenga tracks/conciertos asociados.
@@ -34,7 +39,7 @@ artistas evitan borrar catálogo que tenga tracks/conciertos asociados.
 ## Migraciones
 
 `docker compose up --build` las ejecuta al arrancar. También `./gradlew bootRun`
-con variables de conexión. No editar V1–V5 una vez desplegadas: crear V6+.
+con variables de conexión. No editar V1–V6 una vez desplegadas: crear V7+.
 No usar `ddl-auto=update`, H2 ni SQL de creación paralelo.
 
 ## Seed de desarrollo

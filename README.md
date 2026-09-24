@@ -16,7 +16,7 @@ apps/
     src/main/java/com/wavelength/
       auth/ users/ music/ matching/ social/ concerts/ activity/
       common/ config/
-    src/main/resources/db/migration/  # V1–V5
+    src/main/resources/db/migration/  # V1–V6
     src/test/java/com/wavelength/
     Dockerfile
   mobile/
@@ -154,13 +154,14 @@ para resultados comprobados y límites.
 
 ## Implementado y reservado
 
-**Real:** Google OAuth y renovación de sesión, conexión musical con Spotify PKCE y
+**Real:** Google OAuth y renovación de sesión, selección manual de artistas favoritos,
+Music DNA y matching basados en esa selección, conexión musical con Spotify PKCE y
 Apple Music MusicKit, cifrado de tokens y renovación Spotify (pendientes de credenciales reales),
 JWT, provisioning, perfil/validación, Flyway/constraints, catálogo canónico,
 afinidades, matching determinista paginado, conexiones, bloqueos, reports, JSON logs,
 OpenAPI dev, health, tests PostgreSQL, UI navegable y cliente HTTP tipado.
 
-**Stub/reserva explícita:** importación de gustos musicales y arquetipos DNA,
+**Stub/reserva explícita:** importación automática de gustos musicales y arquetipos DNA,
 S3/R2, jobs, actividad, conciertos funcionales, embeddings, rate limiting y analytics.
 La demo mobile no llama al backend ni persiste cambios. El backend DNA usa artistas
 reales almacenados y devuelve dimensiones sin calcular como ausentes, no como scores falsos.
@@ -172,7 +173,8 @@ Decisiones/deuda: [arquitectura](docs/architecture.md), [base de datos](docs/dat
 
 1. Crear proyecto Supabase, configurar Google y verificar login/refresh en dispositivo.
 2. Configurar credenciales Spotify/Apple y probar ambos consentimientos en web y dispositivo.
-3. Crear sync idempotente, reconciliación canónica y cálculo documentado de afinidades/DNA.
+3. Crear sync idempotente y reconciliación canónica para combinar datos musicales
+   importados con la selección manual sin perder preferencias.
 4. Validar experiencia con dispositivos reales y añadir tests E2E del flujo autenticado.
 5. Preparar piloto privado: rate limiting, moderación, retención/borrado de datos,
    observabilidad conectada y medición del coste del matching.

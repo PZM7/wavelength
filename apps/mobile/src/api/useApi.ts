@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useSession } from '../features/auth/SessionProvider';
 import { createHttpClient } from './http';
 import type { MatchPageDto } from './contracts';
-import type { Profile, ProfilePatch, MusicAccount, MusicDna, User, Connection, MatchPage } from '../types/models';
+import type { Profile, ProfilePatch, MusicAccount, MusicDna, FavoriteArtist, User, Connection, MatchPage } from '../types/models';
 import { demoProfile, demoMatches, demoDna } from '../features/demo/data';
 
 export function useApi() {
@@ -18,6 +18,16 @@ export function useApi() {
     return {
       me: (): Promise<Profile> => demo ? Promise.resolve(demoProfile) : http('/api/v1/me'),
       dna: (): Promise<MusicDna> => demo ? Promise.resolve(demoDna) : http('/api/v1/me/music-dna'),
+      favoriteArtists: (): Promise<FavoriteArtist[]> => demo
+        ? Promise.resolve(demoDna.topArtists.map(({ id, name }) => ({ id, name })))
+        : http('/api/v1/me/favorite-artists'),
+      searchArtists: (query: string): Promise<FavoriteArtist[]> => demo
+        ? Promise.resolve(demoDna.topArtists.filter(artist => artist.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())).map(({ id, name }) => ({ id, name })))
+        : http(`/api/v1/artists?query=${encodeURIComponent(query)}`),
+      saveFavoriteArtists: (names: string[]): Promise<FavoriteArtist[]> => {
+        realOnly();
+        return http('/api/v1/me/favorite-artists', { method: 'PUT', body: JSON.stringify({ names }) });
+      },
       accounts: (): Promise<MusicAccount[]> => demo ? Promise.resolve([]) : http('/api/v1/me/music-accounts'),
       musicAvailability: (): Promise<{ spotify: boolean; appleMusic: boolean }> => demo
         ? Promise.resolve({ spotify: false, appleMusic: false })

@@ -91,13 +91,15 @@ El usuario puede retirar también el acceso desde la configuración del proveedo
 
 El enlace y almacenamiento de credenciales están implementados. Los adaptadores
 `MusicProviderClient` para obtener gustos todavía devuelven listas vacías; la
-sincronización, reconciliación de artistas y cálculo de afinidades son el siguiente
-paso. La demo no conecta proveedores ni llama al backend.
+sincronización y reconciliación de artistas son el siguiente paso. Mientras tanto,
+los usuarios autenticados pueden elegir artistas favoritos manualmente. Esa selección
+se guarda separada de los gustos importados y ya alimenta Music DNA y matching.
+La demo no conecta proveedores ni llama al backend.
 
 Las pruebas locales cubren cifrado, rotación, estado de un solo uso, firma del
 developer token Apple y contratos HTTP de ambos proveedores. No se ha realizado
-una autorización real porque faltan proyecto Supabase y credenciales Spotify/
-Apple Music. Antes de habilitar a usuarios: probar ambos consentimientos, retorno
+una autorización musical real porque faltan credenciales Spotify/Apple Music.
+Antes de habilitar a usuarios: probar ambos consentimientos, retorno
 web y nativo, cancelación, renovación Spotify, reconexión Apple y desconexión con
 cuentas de prueba reales.
 

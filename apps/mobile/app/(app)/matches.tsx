@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useApi } from '../../src/api/useApi';
 import { useSession } from '../../src/features/auth/SessionProvider';
 import { Screen, Title, Body, Card, Button, Pill, Avatar, QueryState, colors } from '../../src/components/ui';
@@ -16,6 +16,7 @@ export default function Matches() {
   const api = useApi();
   const { mode } = useSession();
   const [filter, setFilter] = useState<'all' | 'near' | 'taste'>('all');
+  const dna = useQuery({ queryKey: ['dna'], queryFn: api.dna, enabled: mode !== 'demo' });
   const query = useInfiniteQuery({ queryKey: ['matches'], initialPageParam: undefined as string | undefined, queryFn: ({ pageParam }) => api.matches(pageParam), getNextPageParam: page => page.nextCursor ?? undefined });
   const matches = query.data?.pages.flatMap(page => page.matches) ?? [];
   const visibleMatches = filter === 'near' ? [] : filter === 'taste' ? matches.filter(match => match.compatibility >= 0.75) : matches;
@@ -24,7 +25,7 @@ export default function Matches() {
     <View style={local.filters}><Pill label="Para ti" selected={filter === 'all'} onPress={() => setFilter('all')} /><Pill label="Cerca de ti" selected={filter === 'near'} onPress={() => setFilter('near')} /><Pill label="Mismo gusto" selected={filter === 'taste'} onPress={() => setFilter('taste')} /></View>
     <QueryState pending={query.isPending} error={query.error} retry={() => void query.refetch()} />
     {filter === 'near' && <Card><Body>La búsqueda por cercanía estará disponible cuando se puedan compartir ubicaciones.</Body></Card>}
-    {!query.isPending && !query.error && filter !== 'near' && visibleMatches.length === 0 && <Card><Body>{filter === 'taste' ? 'No hay afinidades superiores al 75% en esta lista.' : 'Aún no hay afinidades. Necesitamos artistas en común con otras personas.'}</Body></Card>}
+    {!query.isPending && !query.error && filter !== 'near' && visibleMatches.length === 0 && <Card><Body>{filter === 'taste' ? 'No hay afinidades superiores al 75% en esta lista.' : dna.data?.status === 'ARTIST_SIGNALS_ONLY' ? 'Aún no hay otras personas visibles con artistas en común. Podrás verlas aquí cuando completen su gusto musical.' : 'Aún no hay afinidades. Elige tus artistas favoritos para empezar.'}</Body>{mode !== 'demo' && <Button secondary label={dna.data?.status === 'ARTIST_SIGNALS_ONLY' ? 'Editar mis artistas' : 'Elegir mis artistas'} onPress={() => router.push('/(app)/favorite-artists')} />}</Card>}
     {visibleMatches.map((match, index) => {
       const name = match.user.displayName ?? match.user.username ?? 'Oyente';
       const taste = mode === 'demo' ? demoTaste[match.user.id] : undefined;

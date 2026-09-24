@@ -23,9 +23,13 @@ public class MatchRepository {
         UUID id = cursor == null ? null : cursor.id();
         return db.resultQuery(
                         """
-WITH weights AS (
+WITH signals AS (
     SELECT user_id, artist_id, (short_term_score + medium_term_score + long_term_score) / 3.0 AS w
     FROM user_artist_affinities
+    UNION ALL
+    SELECT user_id, artist_id, 1.0 AS w FROM user_manual_artist_preferences
+), weights AS (
+    SELECT user_id, artist_id, max(w) AS w FROM signals GROUP BY user_id, artist_id
 ), mine AS (SELECT artist_id, w FROM weights WHERE user_id = ? AND w > 0),
 totals AS (SELECT user_id, sum(w) AS total FROM weights GROUP BY user_id),
 shared_weights AS (
@@ -66,7 +70,7 @@ ORDER BY score DESC, id LIMIT ?
                                     List.of(
                                             new MatchReason(
                                                     "SHARED_ARTISTS",
-                                                    count + " shared artists",
+                                                    count == 1 ? "1 artista en común" : count + " artistas en común",
                                                     count)));
                         });
     }

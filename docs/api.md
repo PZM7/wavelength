@@ -16,6 +16,9 @@ ningún token hasta configurar uno válido. No usar ID tokens como access tokens
 | GET | /health | 200 `{ "status": "ok" }` |
 | GET | /me | 200 perfil privado; provisioning configurado |
 | PATCH | /me | 200 perfil actualizado |
+| GET | /artists?query=… | 200 hasta 20 artistas del catálogo |
+| GET | /me/favorite-artists | 200 selección manual propia |
+| PUT | /me/favorite-artists | 200 selección sustituida; body `{ "names": ["Björk"] }` |
 | GET | /me/music-accounts | 200 lista segura (sin credenciales) |
 | GET | /me/music-connections/availability | 200 proveedores configurados |
 | POST | /me/music-connections/{provider}/start?target=web\|native | 200 authorizationUrl, returnUri |
@@ -36,6 +39,15 @@ ningún token hasta configurar uno válido. No usar ID tokens como access tokens
 connections usa UUID como cursor, ordenado por ID (no cronológico). Pasar el
 `nextCursor` de la última respuesta, detenerse cuando sea null. Ambos endpoints
 excluyen conexiones/personas bloqueadas. Matches sin señales devuelve lista vacía.
+
+La selección manual admite hasta 20 nombres de 1–100 caracteres. Los nombres se
+normalizan para reutilizar un artista existente y evitar duplicados por mayúsculas
+o espacios. Una lista vacía borra solo la selección manual. Los gustos importados
+permanecen intactos. Cada artista elegido aporta una señal de peso 1; si existe
+una señal importada para el mismo artista se usa el mayor peso. Solo usuarios con
+`discoverable=true` aparecen como candidatos en afinidades.
+La entrada manual identifica artistas por nombre normalizado; homónimos todavía
+requieren desambiguación con identificadores de proveedor o catálogo externo.
 
 Los endpoints de inicio y desconexión musical requieren JWT Wavelength. Los
 callbacks públicos `/api/v1/music/spotify/callback` y

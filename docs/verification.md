@@ -42,6 +42,15 @@ la pantalla de cuentas de la demo: muestra ambos proveedores sin permitir enlace
 reales. No hay credenciales de Spotify, Apple Music ni proyecto Supabase, así que
 el consentimiento y retorno con proveedores reales siguen sin verificar.
 
+La selección manual de artistas del 24-09-2026 pasó la suite unitaria Java y la
+suite de integración con PostgreSQL/pgvector; el caso nuevo cubre creación,
+normalización, validación, aislamiento entre usuarios, Music DNA, matching y
+conservación de señales existentes al borrar la selección manual. Mobile pasó
+typecheck, 12 tests Vitest y exportación web/iOS/Android. La migración V6 y el
+preflight CORS de PUT se comprobaron en el backend local. La pantalla se recorrió
+visualmente en web en modo demo; el guardado con una sesión Google real sigue
+pendiente de prueba manual en la app.
+
 ## Dependencias
 
 `npm audit` detecta 12 avisos moderados transitivos del ecosistema Expo 55:

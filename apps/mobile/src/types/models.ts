@@ -5,4 +5,5 @@ export type Match = { user: User; compatibility: number; reasons: { type: string
 export type MatchPage = { matches: Match[]; nextCursor: string | null };
 export type MusicDna = { status: 'INSUFFICIENT_DATA' | 'ARTIST_SIGNALS_ONLY' | 'DEMO'; archetype: string | null; scores: Record<string, number>; topArtists: { id: string; name: string; weight: number }[] };
 export type MusicAccount = { id: string; provider: 'SPOTIFY' | 'APPLE_MUSIC'; createdAt: string };
+export type FavoriteArtist = { id: string; name: string };
 export type Connection = { id: string; requesterId: string; receiverId: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; createdAt: string; updatedAt: string };

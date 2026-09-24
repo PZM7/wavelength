@@ -2,8 +2,8 @@
 
 Wavelength usa Supabase Auth para iniciar sesión con Google y renovar el access token.
 Spring Security valida cada token enviado al backend; no emite sesiones ni acepta
-tokens de la demo. La configuración de proveedor está preparada, pero todavía no
-existe un proyecto Supabase para probar el acceso real.
+tokens de la demo. El proyecto Supabase real se configura en archivos locales
+ignorados por Git; el repositorio no contiene sus credenciales.
 
 ## Activación
 
@@ -48,7 +48,6 @@ probar el flujo local con la URL web añadida a la allowlist.
   identidad. Sus flujos están implementados y requieren credenciales propias para
   activarse; véase [conexiones musicales](music-providers.md).
 
-Verificación con proyecto real: entrar con Google, consultar `/api/v1/me`, forzar
-la renovación de un token expirado, reiniciar la app nativa para comprobar que la
-sesión continúa y cerrar sesión. El proyecto Supabase y las credenciales OAuth de
-Google aún no están disponibles; estas pruebas manuales quedan pendientes.
+El acceso con Google y `/api/v1/me` se verificaron en web. Aún quedan pruebas
+manuales de renovación de un token expirado, persistencia al reiniciar la app
+nativa y cierre de sesión en dispositivo.

@@ -20,9 +20,16 @@ public class TasteRepository {
     public List<ArtistWeight> artists(UUID userId) {
         return db.resultQuery(
                         """
-SELECT a.id, a.name, (f.short_term_score + f.medium_term_score + f.long_term_score) / 3.0 AS weight
-FROM user_artist_affinities f JOIN artists a ON a.id = f.artist_id
-WHERE f.user_id = ? ORDER BY weight DESC, a.id LIMIT 200
+WITH signals AS (
+    SELECT user_id, artist_id, (short_term_score + medium_term_score + long_term_score) / 3.0 AS weight
+    FROM user_artist_affinities
+    UNION ALL
+    SELECT user_id, artist_id, 1.0 AS weight FROM user_manual_artist_preferences
+), effective AS (
+    SELECT artist_id, max(weight) AS weight FROM signals WHERE user_id = ? GROUP BY artist_id
+)
+SELECT a.id, a.name, e.weight FROM effective e JOIN artists a ON a.id = e.artist_id
+ORDER BY e.weight DESC, a.name, a.id LIMIT 200
 """,
                         userId)
                 .fetch(
@@ -39,8 +46,14 @@ WHERE f.user_id = ? ORDER BY weight DESC, a.id LIMIT 200
         var rows =
                 db.resultQuery(
                                 """
-SELECT user_id, artist_id, (short_term_score + medium_term_score + long_term_score) / 3.0 AS weight
-FROM user_artist_affinities WHERE user_id IN (%s)
+WITH signals AS (
+    SELECT user_id, artist_id, (short_term_score + medium_term_score + long_term_score) / 3.0 AS weight
+    FROM user_artist_affinities
+    UNION ALL
+    SELECT user_id, artist_id, 1.0 AS weight FROM user_manual_artist_preferences
+)
+SELECT user_id, artist_id, max(weight) AS weight FROM signals
+WHERE user_id IN (%s) GROUP BY user_id, artist_id
 """
                                         .formatted(placeholders),
                                 userIds.toArray())

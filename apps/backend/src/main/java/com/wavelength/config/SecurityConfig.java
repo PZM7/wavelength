@@ -139,7 +139,7 @@ public class SecurityConfig {
         var config = new CorsConfiguration();
         config.setAllowedOrigins(
                 Arrays.stream(origins.split(",", -1)).map(TextInput::trim).toList());
-        config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-ID"));
         config.setExposedHeaders(List.of("X-Request-ID"));
         var source = new UrlBasedCorsConfigurationSource();

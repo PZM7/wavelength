@@ -18,7 +18,9 @@ export default function MusicDNA() {
       <Body>Te mueves entre escenas, sigues la curiosidad y haces tuyos los sonidos nuevos.</Body></View>
     <QueryState pending={query.isPending} error={query.error} retry={() => void query.refetch()} />
     {dna?.status === 'INSUFFICIENT_DATA' && <Card><Body>Aún no hay suficientes señales musicales. Tu perfil aparecerá aquí cuando haya datos disponibles.</Body></Card>}
+    {dna?.status === 'INSUFFICIENT_DATA' && <Button label="Elegir mis artistas favoritos" onPress={() => router.push('/(app)/favorite-artists')} />}
     {dna?.status === 'ARTIST_SIGNALS_ONLY' && <Card><Body>Basado en afinidades de artistas. Las dimensiones de descubrimiento y nostalgia aún no se calculan.</Body></Card>}
+    {dna?.status === 'ARTIST_SIGNALS_ONLY' && <Button secondary label="Editar mis artistas favoritos" onPress={() => router.push('/(app)/favorite-artists')} />}
     {scores.length > 0 && <View style={local.scores}>{scores.map(([key, value], index) => <Card key={key} style={local.score}>
       <Text style={local.scoreNumber}>{Math.round(value * 100)}</Text><Text style={local.scoreLabel}>{scoreLabels[key]}</Text>
       <View style={local.track}><View style={[local.fill, { width: `${Math.round(value * 100)}%`, backgroundColor: scoreColors[index % scoreColors.length] }]} /></View>

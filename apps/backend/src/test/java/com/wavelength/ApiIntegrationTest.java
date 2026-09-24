@@ -278,6 +278,67 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void manuallyChosenArtistsDriveDnaAndMatchesWithoutMusicAccounts() throws Exception {
+        mvc.perform(get("/api/v1/me/favorite-artists"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("new"))
+                        .contentType("application/json")
+                        .content("{\"names\":[\"Björk\",\"Massive Attack\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Björk"))
+                .andExpect(jsonPath("$[1].name").value("Massive Attack"));
+        mvc.perform(get("/api/v1/artists?query=bj").with(asUser("new")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Björk"));
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("new")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ARTIST_SIGNALS_ONLY"))
+                .andExpect(jsonPath("$.topArtists.length()").value(2));
+
+        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("other"))
+                        .contentType("application/json")
+                        .content("{\"names\":[\"björk\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Björk"));
+        mvc.perform(patch("/api/v1/me").with(asUser("other"))
+                        .contentType("application/json").content("{\"discoverable\":true}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/matches").with(asUser("new")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matches[0].reasons[0].label").value("1 artista en común"))
+                .andExpect(jsonPath("$.matches[0].reasons[0].count").value(1));
+
+        for (String body : List.of("{\"names\":[\"Björk\",\"björk\"]}",
+                "{\"names\":[\"\"]}", "{\"names\":null}")) {
+            mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("new"))
+                            .contentType("application/json").content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        String tooMany = "{\"names\":[" + java.util.stream.IntStream.range(0, 21)
+                .mapToObj(index -> "\"Artist " + index + "\"")
+                .collect(java.util.stream.Collectors.joining(",")) + "]}";
+        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("new"))
+                        .contentType("application/json").content(tooMany))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/me/favorite-artists").with(asUser("new")))
+                .andExpect(jsonPath("$.length()").value(2));
+
+        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("new"))
+                        .contentType("application/json").content("{\"names\":[]}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("new")))
+                .andExpect(jsonPath("$.status").value("INSUFFICIENT_DATA"));
+        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("marc"))
+                        .contentType("application/json").content("{\"names\":[\"Björk\"]}"))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("marc"))
+                        .contentType("application/json").content("{\"names\":[]}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("marc")))
+                .andExpect(jsonPath("$.status").value("ARTIST_SIGNALS_ONLY"));
+    }
+
+    @Test
     void connectionReceiverOwnsTransitionsAndReverseDuplicatesAreRefused() throws Exception {
         var response =
                 mvc.perform(post("/api/v1/connections/" + lucia).with(asUser("marc")))
