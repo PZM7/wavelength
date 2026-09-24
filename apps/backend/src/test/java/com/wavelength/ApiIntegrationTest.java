@@ -152,6 +152,22 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void browserPreflightCanReachAuthenticatedApi() throws Exception {
+        mvc.perform(
+                        options("/api/v1/me")
+                                .header("Origin", "http://localhost:8081")
+                                .header("Access-Control-Request-Method", "GET")
+                                .header("Access-Control-Request-Headers", "authorization"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:8081"))
+                .andExpect(header().string("Access-Control-Allow-Headers", "authorization"));
+
+        mvc.perform(get("/api/v1/me").header("Origin", "http://localhost:8081"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:8081"));
+    }
+
+    @Test
     void actualJwtSignatureIssuerAudienceExpiryAndSubjectAreValidated() throws Exception {
         mvc.perform(
                         get("/api/v1/me")

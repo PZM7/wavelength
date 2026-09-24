@@ -67,9 +67,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain security(HttpSecurity http) throws Exception {
+    public SecurityFilterChain security(
+            HttpSecurity http, UrlBasedCorsConfigurationSource corsConfigurationSource)
+            throws Exception {
         http.csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
@@ -132,7 +134,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UrlBasedCorsConfigurationSource cors(
+    public UrlBasedCorsConfigurationSource corsConfigurationSource(
             @Value("${wavelength.cors-origins}") String origins) {
         var config = new CorsConfiguration();
         config.setAllowedOrigins(
