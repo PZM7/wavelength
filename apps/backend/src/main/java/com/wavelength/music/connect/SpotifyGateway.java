@@ -3,6 +3,7 @@ package com.wavelength.music.connect;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wavelength.common.ApiException;
+import com.wavelength.music.ProviderArtistData;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -15,6 +16,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -85,6 +88,37 @@ public class SpotifyGateway {
             var id = mapper.readTree(response.body()).path("account_id").asText("");
             if (id.isBlank() || id.length() > 255) throw providerError();
             return id;
+        } catch (IOException e) { throw providerError(); }
+    }
+
+    public List<ProviderArtistData> topArtists(String accessToken, String timeRange) {
+        if (!List.of("short_term", "medium_term", "long_term").contains(timeRange))
+            throw new IllegalArgumentException("Unsupported Spotify time range");
+        var request = HttpRequest.newBuilder(URI.create(apiBase + "/v1/me/top/artists?time_range="
+                        + timeRange + "&limit=50"))
+                .timeout(Duration.ofSeconds(10))
+                .header("Authorization", "Bearer " + accessToken)
+                .header("Accept", "application/json").GET().build();
+        var response = send(request);
+        if (response.statusCode() == 401 || response.statusCode() == 403)
+            throw new ApiException(HttpStatus.CONFLICT, "MUSIC_RECONNECT_REQUIRED",
+                    "Reconnect Spotify to continue");
+        if (response.statusCode() == 429)
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "MUSIC_PROVIDER_RATE_LIMITED",
+                    "Spotify is limiting requests; try again later");
+        if (response.statusCode() != 200) throw providerError();
+        try {
+            var items = mapper.readTree(response.body()).path("items");
+            if (!items.isArray() || items.size() > 50) throw providerError();
+            var artists = new ArrayList<ProviderArtistData>();
+            for (var item : items) {
+                var id = item.path("id").asText("");
+                var name = item.path("name").asText("").trim();
+                if (id.isBlank() || id.length() > 255 || name.isBlank() || name.length() > 255
+                        || name.codePoints().anyMatch(Character::isISOControl)) throw providerError();
+                artists.add(new ProviderArtistData(id, name));
+            }
+            return artists;
         } catch (IOException e) { throw providerError(); }
     }
 

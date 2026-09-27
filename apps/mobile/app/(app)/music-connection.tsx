@@ -46,9 +46,24 @@ export default function MusicConnection() {
     setNotice(null);
     try {
       await api.disconnectMusic(provider);
-      await queries.invalidateQueries({ queryKey: ['accounts'] });
-      setNotice('Cuenta desconectada y credenciales borradas.');
+      await Promise.all([queries.invalidateQueries({ queryKey: ['accounts'] }),
+        queries.invalidateQueries({ queryKey: ['dna'] }), queries.invalidateQueries({ queryKey: ['matches'] })]);
+      setNotice('Cuenta desconectada. Se han borrado sus credenciales y gustos importados.');
     } catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudo desconectar.'); }
+    finally { setBusy(null); }
+  }
+
+  async function syncSpotify() {
+    setBusy('SPOTIFY');
+    setNotice(null);
+    try {
+      const result = await api.syncSpotify();
+      await Promise.all([queries.invalidateQueries({ queryKey: ['dna'] }),
+        queries.invalidateQueries({ queryKey: ['matches'] })]);
+      setNotice(result.artistsImported > 0
+        ? `${result.artistsImported} artistas de Spotify actualizados en tu Music DNA.`
+        : 'Spotify no ha devuelto todavía artistas favoritos para esta cuenta.');
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudieron importar tus artistas.'); }
     finally { setBusy(null); }
   }
 
@@ -65,12 +80,15 @@ export default function MusicConnection() {
         <View style={{ gap: 8 }}>
           <Button label={busy === provider.id ? 'Espera…' : connected ? 'Volver a autorizar' : `Conectar ${provider.name}`}
             disabled={demo || !configured || busy !== null} onPress={() => void connect(provider.id)} />
+          {connected && provider.id === 'SPOTIFY' && <Button secondary
+            label="Actualizar mis artistas de Spotify" disabled={busy !== null}
+            onPress={() => void syncSpotify()} />}
           {connected && <Button secondary label={`Desconectar ${provider.name}`} disabled={busy !== null}
             onPress={() => void disconnect(provider.id)} />}
         </View>
       </Card>;
     })}
     {notice && <Text accessibilityRole="alert" style={{ color: colors.ink }}>{notice}</Text>}
-    <Body>La conexión autoriza acceso; la sincronización del gusto musical llegará en la siguiente fase.</Body>
+    <Body>Spotify actualiza tus artistas favoritos cuando tú lo pides. Tus artistas elegidos manualmente se conservan.</Body>
   </Screen>;
 }

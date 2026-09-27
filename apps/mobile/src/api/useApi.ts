@@ -44,6 +44,10 @@ export function useApi() {
         realOnly();
         return http('/api/v1/me/music-connections/spotify/refresh', { method: 'POST' });
       },
+      syncSpotify: (): Promise<{ artistsImported: number; syncedAt: string }> => {
+        realOnly();
+        return http('/api/v1/me/music-connections/spotify/sync', { method: 'POST', timeoutMs: 40000 });
+      },
       matches: async (cursor?: string): Promise<MatchPage> => {
         if (demo) return demoMatches;
         const dto = await http<MatchPageDto>(`/api/v1/matches?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);

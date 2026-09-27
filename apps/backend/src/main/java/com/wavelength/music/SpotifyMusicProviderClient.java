@@ -1,12 +1,21 @@
 package com.wavelength.music;
 
+import com.wavelength.music.connect.MusicCredentialService;
+import com.wavelength.music.connect.SpotifyGateway;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-// Explicit empty stub: no OAuth, network calls, tokens or invented live listening.
 @Component
 public class SpotifyMusicProviderClient implements MusicProviderClient {
+    private final MusicCredentialService credentials;
+    private final SpotifyGateway spotify;
+
+    public SpotifyMusicProviderClient(MusicCredentialService credentials, SpotifyGateway spotify) {
+        this.credentials = credentials;
+        this.spotify = spotify;
+    }
+
     @Override
     public MusicProvider getProvider() {
         return MusicProvider.SPOTIFY;
@@ -14,16 +23,21 @@ public class SpotifyMusicProviderClient implements MusicProviderClient {
 
     @Override
     public boolean isStub() {
-        return true;
+        return false;
     }
 
     @Override
     public List<ProviderArtistData> getTopArtists(MusicAccount account) {
-        return List.of();
+        return getTopArtists(account, "medium_term");
+    }
+
+    public List<ProviderArtistData> getTopArtists(MusicAccount account, String timeRange) {
+        return spotify.topArtists(credentials.accessTokenForSpotify(account.getUserId()), timeRange);
     }
 
     @Override
     public List<ProviderTrackData> getTopTracks(MusicAccount account) {
+        // Track affinities are not part of the current artist-based matching model.
         return List.of();
     }
 

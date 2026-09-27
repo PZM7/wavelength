@@ -34,6 +34,17 @@ Cuando Spotify devuelve otro refresh token, reemplaza el anterior; si no lo
 devuelve, conserva el vigente. Si Spotify rechaza el refresh token, se devuelve
 `MUSIC_RECONNECT_REQUIRED` y hay que volver a autorizar.
 
+Después de conectar, **Actualizar mis artistas de Spotify** consulta los 50
+artistas principales de los periodos corto, medio y largo. Cada posición se
+convierte en una señal entre 0 y 1; Music DNA y las coincidencias usan la media
+de los tres periodos. Repetir la sincronización reemplaza sólo los artistas de
+esa cuenta Spotify. La selección manual se conserva y, si un artista aparece
+en ambas fuentes, se usa la señal mayor. Si Spotify rechaza la autorización,
+hay que volver a autorizar; si limita peticiones, se puede reintentar más tarde.
+Una respuesta incompleta no borra los gustos anteriores. Desconectar la cuenta
+borra también sus artistas importados. Las canciones y escuchas recientes aún
+no se importan ni se usan para calcular afinidades.
+
 ## Apple Music
 
 Apple Music no utiliza el OAuth de Spotify. El backend crea un developer token
@@ -89,11 +100,10 @@ El usuario puede retirar también el acceso desde la configuración del proveedo
 
 ## Alcance y verificación
 
-El enlace y almacenamiento de credenciales están implementados. Los adaptadores
-`MusicProviderClient` para obtener gustos todavía devuelven listas vacías; la
-sincronización y reconciliación de artistas son el siguiente paso. Mientras tanto,
-los usuarios autenticados pueden elegir artistas favoritos manualmente. Esa selección
-se guarda separada de los gustos importados y ya alimenta Music DNA y matching.
+El enlace y almacenamiento de credenciales están implementados. Spotify importa
+artistas al solicitarlo el usuario; Apple Music aún no sincroniza gustos. Los
+usuarios autenticados también pueden elegir artistas favoritos manualmente. Esa
+selección se guarda separada de los gustos importados y alimenta Music DNA y matching.
 La demo no conecta proveedores ni llama al backend.
 
 Las pruebas locales cubren cifrado, rotación, estado de un solo uso, firma del

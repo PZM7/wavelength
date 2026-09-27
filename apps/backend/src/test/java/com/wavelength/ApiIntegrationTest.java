@@ -18,6 +18,11 @@ import com.sun.net.httpserver.HttpServer;
 import com.wavelength.common.ApiException;
 import com.wavelength.config.DevSeed;
 import com.wavelength.matching.MatchService;
+import com.wavelength.music.MusicAccount;
+import com.wavelength.music.MusicAccountRepository;
+import com.wavelength.music.MusicProvider;
+import com.wavelength.music.SpotifyTasteSyncPersistence;
+import com.wavelength.music.SpotifyTasteSyncService;
 import com.wavelength.social.ConnectionService;
 import com.wavelength.social.PrivacyService;
 
@@ -110,6 +115,9 @@ class ApiIntegrationTest {
     private final PrivacyService privacy;
     private final UUID marc = DevSeed.userId(0);
     private final UUID lucia = DevSeed.userId(1);
+
+    @Autowired private MusicAccountRepository musicAccounts;
+    @Autowired private SpotifyTasteSyncPersistence spotifyTaste;
 
     @Autowired
     ApiIntegrationTest(
@@ -336,6 +344,37 @@ class ApiIntegrationTest {
                 .andExpect(status().isOk());
         mvc.perform(get("/api/v1/me/music-dna").with(asUser("marc")))
                 .andExpect(jsonPath("$.status").value("ARTIST_SIGNALS_ONLY"));
+    }
+
+    @Test
+    void spotifySyncReplacesOnlyImportedTasteAndDisconnectRemovesIt() throws Exception {
+        mvc.perform(get("/api/v1/me").with(asUser("spotify-sync"))).andExpect(status().isOk());
+        UUID userId = jdbc.queryForObject("SELECT id FROM users WHERE external_auth_id = ?", UUID.class,
+                "dev|spotify-sync");
+        var account = musicAccounts.saveAndFlush(new MusicAccount(userId, MusicProvider.SPOTIFY,
+                "spotify-sync-user"));
+        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("spotify-sync"))
+                .contentType("application/json").content("{\"names\":[\"Björk\"]}"))
+                .andExpect(status().isOk());
+
+        spotifyTaste.replace(userId, account.getId(), List.of(
+                new SpotifyTasteSyncService.ArtistScores("spotify-sampha", "Sampha", 1, 0.8, 0.6),
+                new SpotifyTasteSyncService.ArtistScores("spotify-bjork", "Björk", 0.9, 0, 0)));
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("spotify-sync")))
+                .andExpect(jsonPath("$.topArtists.length()").value(2));
+        mvc.perform(get("/api/v1/matches").with(asUser("spotify-sync")))
+                .andExpect(jsonPath("$.matches[0].reasons[0].count").value(1));
+
+        spotifyTaste.replace(userId, account.getId(), List.of(
+                new SpotifyTasteSyncService.ArtistScores("spotify-massive", "Massive Attack", 1, 0.5, 0)));
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("spotify-sync")))
+                .andExpect(jsonPath("$.topArtists.length()").value(2))
+                .andExpect(jsonPath("$.topArtists[0].name").value("Björk"));
+        mvc.perform(delete("/api/v1/me/music-connections/SPOTIFY").with(asUser("spotify-sync")))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("spotify-sync")))
+                .andExpect(jsonPath("$.topArtists.length()").value(1))
+                .andExpect(jsonPath("$.topArtists[0].name").value("Björk"));
     }
 
     @Test

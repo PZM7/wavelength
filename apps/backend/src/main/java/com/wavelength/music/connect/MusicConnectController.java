@@ -2,6 +2,7 @@ package com.wavelength.music.connect;
 
 import com.wavelength.auth.CurrentUserProvider;
 import com.wavelength.music.MusicProvider;
+import com.wavelength.music.SpotifyTasteSyncService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,15 +20,18 @@ public class MusicConnectController {
     private final MusicConnectSettings settings;
     private final MusicConnectService connect;
     private final MusicCredentialService credentials;
+    private final SpotifyTasteSyncService tasteSync;
 
     public record Availability(boolean spotify, boolean appleMusic) {}
 
     public MusicConnectController(CurrentUserProvider current, MusicConnectSettings settings,
-            MusicConnectService connect, MusicCredentialService credentials) {
+            MusicConnectService connect, MusicCredentialService credentials,
+            SpotifyTasteSyncService tasteSync) {
         this.current = current;
         this.settings = settings;
         this.connect = connect;
         this.credentials = credentials;
+        this.tasteSync = tasteSync;
     }
 
     @GetMapping("/availability")
@@ -44,6 +48,11 @@ public class MusicConnectController {
     @PostMapping("/spotify/refresh")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void refreshSpotify() { credentials.refreshSpotify(current.get().getId()); }
+
+    @PostMapping("/spotify/sync")
+    public SpotifyTasteSyncService.SyncResponse syncSpotify() {
+        return tasteSync.sync(current.get().getId());
+    }
 
     @DeleteMapping("/{provider}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

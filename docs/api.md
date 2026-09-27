@@ -23,6 +23,7 @@ ningún token hasta configurar uno válido. No usar ID tokens como access tokens
 | GET | /me/music-connections/availability | 200 proveedores configurados |
 | POST | /me/music-connections/{provider}/start?target=web\|native | 200 authorizationUrl, returnUri |
 | POST | /me/music-connections/spotify/refresh | 204; renueva cuando está por caducar |
+| POST | /me/music-connections/spotify/sync | 200; importa artistas favoritos, devuelve `artistsImported` y `syncedAt` |
 | DELETE | /me/music-connections/{provider} | 204; borra las credenciales |
 | GET | /me/music-dna | 200 status, archetype nullable, scores, topArtists |
 | GET | /matches?limit=20&cursor=… | 200 `{matches, nextCursor}` |

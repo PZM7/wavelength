@@ -11,17 +11,18 @@ const messages: Record<number, string> = {
 };
 type ClientOptions = { baseUrl: string; getToken: (forceRefresh?: boolean) => Promise<string | null>; onUnauthorized: () => Promise<void> };
 export function createHttpClient({ baseUrl, getToken, onUnauthorized }: ClientOptions) {
-  return async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return async function request<T>(path: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<T> {
     async function send(token: string | null): Promise<Response> {
+      const { timeoutMs = 15000, ...requestInit } = init;
       const headers = new Headers(init.headers);
       headers.set('Accept', 'application/json');
       if (init.body) headers.set('Content-Type', 'application/json');
       if (token) headers.set('Authorization', `Bearer ${token}`);
       // RN's AbortSignal polyfill does not implement AbortSignal.timeout().
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        return await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, { ...init, headers, signal: init.signal ?? controller.signal });
+        return await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, { ...requestInit, headers, signal: init.signal ?? controller.signal });
       } catch { throw new ApiError(0, 'NETWORK_ERROR', 'No se ha podido conectar. Comprueba tu conexión.'); }
       finally { clearTimeout(timeout); }
     }

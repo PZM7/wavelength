@@ -2,6 +2,7 @@ package com.wavelength.music.connect;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import com.wavelength.common.ApiException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
@@ -12,6 +13,35 @@ import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
 class SpotifyGatewayTest {
+    @Test
+    void readsRankedArtistsAndRejectsProviderErrorsWithoutReturningPartialData() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/me/top/artists", exchange -> {
+            assertEquals("Bearer token", exchange.getRequestHeaders().getFirst("Authorization"));
+            var query = exchange.getRequestURI().getQuery();
+            int status = query.contains("long_term") ? 429 : 200;
+            var body = query.contains("medium_term") ? "{}"
+                    : "{\"items\":[{\"id\":\"spotify-1\",\"name\":\"Björk\"}]}";
+            var bytes = body.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(status, bytes.length);
+            try (var stream = exchange.getResponseBody()) { stream.write(bytes); }
+        });
+        server.start();
+        try {
+            var base = "http://127.0.0.1:" + server.getAddress().getPort();
+            var gateway = new SpotifyGateway(mock(MusicConnectSettings.class), new ObjectMapper(),
+                    HttpClient.newHttpClient(), base, base);
+            var artists = gateway.topArtists("token", "short_term");
+            assertEquals(1, artists.size());
+            assertEquals("spotify-1", artists.getFirst().providerArtistId());
+            assertEquals("Björk", artists.getFirst().name());
+            assertEquals("MUSIC_PROVIDER_ERROR",
+                    assertThrows(ApiException.class, () -> gateway.topArtists("token", "medium_term")).getCode());
+            assertEquals("MUSIC_PROVIDER_RATE_LIMITED",
+                    assertThrows(ApiException.class, () -> gateway.topArtists("token", "long_term")).getCode());
+        } finally { server.stop(0); }
+    }
+
     @Test
     void usesPkceAndExchangesAndRefreshesWithoutExposingTokensToClient() throws Exception {
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
