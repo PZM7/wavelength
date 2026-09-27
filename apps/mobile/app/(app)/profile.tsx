@@ -12,7 +12,7 @@ export default function Profile() {
   const [displayName, setDisplayName] = useState(''); const [discoverable, setDiscoverable] = useState(false);
   const [signOutError, setSignOutError] = useState<Error | null>(null);
   useEffect(() => { if (query.data) { setDisplayName(query.data.displayName ?? ''); setDiscoverable(query.data.discoverable); } }, [query.data]);
-  const mutation = useMutation({ mutationFn: () => api.patchProfile({ displayName: displayName || null, discoverable }), onSuccess: profile => { queries.setQueryData(['me'], profile); } });
+  const mutation = useMutation({ mutationFn: () => api.patchProfile({ displayName: displayName || null, discoverable }), onSuccess: profile => { queries.setQueryData(['me'], profile); void queries.invalidateQueries({ queryKey: ['matches'] }); } });
   return <Screen><Title>Tu perfil.{ '\n' }Tus reglas.</Title><Body>Elige cómo te ven las personas que comparten tu música.</Body>
     <QueryState pending={query.isPending} error={query.error} retry={() => void query.refetch()} />
     {query.data && <Card><Text style={styles.heading}>Nombre visible</Text><TextInput accessibilityLabel="Nombre visible" value={displayName} onChangeText={setDisplayName} maxLength={80} style={styles.input} placeholderTextColor={colors.muted} />

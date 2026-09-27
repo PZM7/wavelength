@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useState } from 'react';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../../src/api/useApi';
 import { useSession } from '../../src/features/auth/SessionProvider';
 import { Screen, Title, Body, Card, Button, Pill, Avatar, QueryState, colors } from '../../src/components/ui';
@@ -15,13 +15,27 @@ const demoTaste: Record<string, { artists: string; tags: string[]; color: string
 export default function Matches() {
   const api = useApi();
   const { mode } = useSession();
+  const queries = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'near' | 'taste'>('all');
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me, enabled: mode !== 'demo' });
   const dna = useQuery({ queryKey: ['dna'], queryFn: api.dna, enabled: mode !== 'demo' });
   const query = useInfiniteQuery({ queryKey: ['matches'], initialPageParam: undefined as string | undefined, queryFn: ({ pageParam }) => api.matches(pageParam), getNextPageParam: page => page.nextCursor ?? undefined });
+  const refresh = useCallback(() => {
+    void queries.invalidateQueries({ queryKey: ['matches'] });
+    void queries.invalidateQueries({ queryKey: ['me'] });
+  }, [queries]);
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') refresh();
+    });
+    return () => subscription.remove();
+  }, [refresh]);
   const matches = query.data?.pages.flatMap(page => page.matches) ?? [];
   const visibleMatches = filter === 'near' ? [] : filter === 'taste' ? matches.filter(match => match.compatibility >= 0.75) : matches;
-  return <Screen right={<Text style={{ color: colors.muted, fontSize: 18 }}>⌕</Text>}>
+  return <Screen right={<Pressable accessibilityRole="button" accessibilityLabel="Actualizar personas" onPress={refresh}><Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>{query.isFetching ? 'Actualizando…' : 'Actualizar'}</Text></Pressable>}>
     <Title>Personas en tu{ '\n' }frecuencia</Title><Body>Conoce a quienes comparten tu gusto musical.</Body>
+    {mode !== 'demo' && me.data?.discoverable === false && <Card><Body>Tu perfil está oculto. Puedes ver a otras personas, pero ellas no te verán en sus afinidades.</Body><Button secondary label="Mostrar mi perfil" onPress={() => router.push('/(app)/profile')} /></Card>}
     <View style={local.filters}><Pill label="Para ti" selected={filter === 'all'} onPress={() => setFilter('all')} /><Pill label="Cerca de ti" selected={filter === 'near'} onPress={() => setFilter('near')} /><Pill label="Mismo gusto" selected={filter === 'taste'} onPress={() => setFilter('taste')} /></View>
     <QueryState pending={query.isPending} error={query.error} retry={() => void query.refetch()} />
     {filter === 'near' && <Card><Body>La búsqueda por cercanía estará disponible cuando se puedan compartir ubicaciones.</Body></Card>}
