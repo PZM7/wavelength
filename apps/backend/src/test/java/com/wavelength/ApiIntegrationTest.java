@@ -365,11 +365,21 @@ class ApiIntegrationTest {
 
     @Test
     void connectionReceiverOwnsTransitionsAndReverseDuplicatesAreRefused() throws Exception {
+        mvc.perform(get("/api/v1/connections/with/" + lucia).with(asUser("marc")))
+                .andExpect(status().isNoContent());
         var response =
                 mvc.perform(post("/api/v1/connections/" + lucia).with(asUser("marc")))
                         .andExpect(status().isCreated())
                         .andReturn();
         var id = mapper.readTree(response.getResponse().getContentAsString()).get("id").asText();
+        mvc.perform(get("/api/v1/connections/with/" + lucia).with(asUser("marc")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.requesterId").value(marc.toString()));
+        mvc.perform(get("/api/v1/connections/with/" + marc).with(asUser("lucia")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.requesterId").value(marc.toString()));
         mvc.perform(post("/api/v1/connections/" + marc).with(asUser("lucia")))
                 .andExpect(status().isConflict());
         mvc.perform(post("/api/v1/connections/" + id + "/accept").with(asUser("marc")))
@@ -377,6 +387,9 @@ class ApiIntegrationTest {
         mvc.perform(post("/api/v1/connections/" + id + "/accept").with(asUser("alex")))
                 .andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/connections/" + id + "/accept").with(asUser("lucia")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+        mvc.perform(get("/api/v1/connections/with/" + marc).with(asUser("lucia")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACCEPTED"));
         mvc.perform(post("/api/v1/connections/" + id + "/reject").with(asUser("lucia")))

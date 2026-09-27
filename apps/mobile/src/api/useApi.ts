@@ -50,6 +50,11 @@ export function useApi() {
       },
       patchProfile: (patch: ProfilePatch): Promise<Profile> => { realOnly(); return http('/api/v1/me', { method: 'PATCH', body: JSON.stringify(patch) }); },
       connect: (id: string): Promise<Connection> => { realOnly(); return http(`/api/v1/connections/${encodeURIComponent(id)}`, { method: 'POST' }); },
+      connectionWith: (id: string): Promise<Connection | undefined> => demo ? Promise.resolve(undefined) : http(`/api/v1/connections/with/${encodeURIComponent(id)}`),
+      respondToConnection: (id: string, response: 'accept' | 'reject'): Promise<Connection> => {
+        realOnly();
+        return http(`/api/v1/connections/${encodeURIComponent(id)}/${response}`, { method: 'POST' });
+      },
       block: (id: string): Promise<void> => { realOnly(); return http(`/api/v1/users/${encodeURIComponent(id)}/block`, { method: 'POST' }); },
     };
   }, [session.mode, session.signOut]);

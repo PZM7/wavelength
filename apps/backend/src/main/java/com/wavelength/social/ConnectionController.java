@@ -3,6 +3,7 @@ package com.wavelength.social;
 import com.wavelength.auth.CurrentUserProvider;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,5 +41,11 @@ public class ConnectionController {
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(required = false) @Nullable UUID cursor) {
         return service.list(current.get().getId(), limit, cursor);
+    }
+
+    @GetMapping("/with/{userId}")
+    public ResponseEntity<ConnectionResponse> withUser(@PathVariable UUID userId) {
+        var connection = service.findPair(current.get().getId(), userId);
+        return connection == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(connection);
     }
 }

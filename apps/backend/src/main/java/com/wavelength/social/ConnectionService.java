@@ -79,6 +79,29 @@ SELECT EXISTS(SELECT 1 FROM connections WHERE
     }
 
     @Transactional(readOnly = true)
+    @Nullable
+    public ConnectionResponse findPair(UUID viewer, UUID target) {
+        if (viewer.equals(target)) throw new IllegalArgumentException();
+        return jdbc.query(
+                """
+SELECT c.* FROM connections c WHERE
+    ((c.requester_id = ? AND c.receiver_id = ?) OR (c.requester_id = ? AND c.receiver_id = ?))
+    AND NOT EXISTS (SELECT 1 FROM blocks b WHERE
+        (b.blocker_id = ? AND b.blocked_id = ?) OR
+        (b.blocker_id = ? AND b.blocked_id = ?))
+""",
+                (rs, index) -> new ConnectionResponse(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("requester_id", UUID.class),
+                        rs.getObject("receiver_id", UUID.class),
+                        ConnectionStatus.valueOf(rs.getString("status")),
+                        rs.getTimestamp("created_at").toInstant(),
+                        rs.getTimestamp("updated_at").toInstant()),
+                viewer, target, target, viewer, viewer, target, target, viewer)
+                .stream().findFirst().orElse(null);
+    }
+
+    @Transactional(readOnly = true)
     public ConnectionPage list(UUID viewer, int limit, @Nullable UUID cursor) {
         if (limit < 1 || limit > 50) throw new IllegalArgumentException();
         var rows =

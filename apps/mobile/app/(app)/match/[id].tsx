@@ -1,11 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useApi } from '../../../src/api/useApi';
 import { useSession } from '../../../src/features/auth/SessionProvider';
 import { demoMatches } from '../../../src/features/demo/data';
 import type { MatchPage } from '../../../src/types/models';
+import { ApiError } from '../../../src/api/http';
 import { Screen, Title, Body, Card, Button, Avatar, QueryState, Eyebrow, colors } from '../../../src/components/ui';
 
 export default function MatchProfile() {
@@ -13,13 +15,19 @@ export default function MatchProfile() {
   const id = typeof params.id === 'string' ? params.id : '';
   const api = useApi(); const session = useSession(); const queries = useQueryClient();
   const query = useQuery({ queryKey: ['user', id], queryFn: () => api.user(id), enabled: Boolean(id) });
-  const connect = useMutation({ mutationFn: () => api.connect(id) });
+  const demo = session.mode === 'demo';
+  const connectionQuery = useQuery({ queryKey: ['connection', id], queryFn: () => api.connectionWith(id), enabled: Boolean(id) && !demo });
+  useFocusEffect(useCallback(() => { if (!demo && id) void queries.invalidateQueries({ queryKey: ['connection', id] }); }, [demo, id, queries]));
+  const connect = useMutation({ mutationFn: () => api.connect(id), onSuccess: connection => { queries.setQueryData(['connection', id], connection); }, onError: error => {
+    if (error instanceof ApiError && error.status === 409) void queries.invalidateQueries({ queryKey: ['connection', id] });
+  } });
+  const respond = useMutation({ mutationFn: ({ connectionId, response }: { connectionId: string; response: 'accept' | 'reject' }) => api.respondToConnection(connectionId, response), onSuccess: connection => { queries.setQueryData(['connection', id], connection); } });
   const block = useMutation({ mutationFn: () => api.block(id), onSuccess: async () => {
     queries.removeQueries({ queryKey: ['user', id] });
     await queries.invalidateQueries({ queryKey: ['matches'] });
     router.replace('/(app)/matches');
   } });
-  const demo = session.mode === 'demo';
+  const connection = connectionQuery.data;
   const cached = queries.getQueryData<InfiniteData<MatchPage>>(['matches']);
   const match = (demo ? demoMatches.matches : cached?.pages.flatMap(page => page.matches) ?? []).find(item => item.user.id === id);
   const name = query.data?.displayName ?? query.data?.username ?? 'Perfil musical';
@@ -40,10 +48,19 @@ export default function MatchProfile() {
       {demo && <><Card style={local.reason}><View style={local.reasonRow}><View style={[local.dot, { backgroundColor: colors.accent }]} /><Text style={local.reasonTitle}>Un universo musical cercano</Text></View><Body style={local.reasonCopy}>Artistas y escenas que se cruzan en vuestros gustos.</Body></Card>
         <Card style={local.reason}><View style={local.reasonRow}><View style={[local.dot, { backgroundColor: colors.blue }]} /><Text style={local.reasonTitle}>Podéis sorprenderos</Text></View><Body style={local.reasonCopy}>Una afinidad abre la puerta a nuevos descubrimientos.</Body></Card></>}
       {match && <Card style={local.shared}><Body style={local.small}>Compartís una afinidad musical del {score}%.</Body></Card>}
-      <Button label={connect.isSuccess ? 'Solicitud enviada' : `Conectar con ${name}`} disabled={demo || connect.isPending || connect.isSuccess} onPress={() => connect.mutate()} />
+      <QueryState pending={connectionQuery.isPending && !demo} error={connectionQuery.error} retry={() => void connectionQuery.refetch()} />
+      {connection?.status === 'PENDING' && connection.requesterId === id && <>
+        <Body>{name} quiere conectar contigo.</Body>
+        <Button label="Aceptar solicitud" disabled={respond.isPending} onPress={() => respond.mutate({ connectionId: connection.id, response: 'accept' })} />
+        <Button secondary label="Rechazar solicitud" disabled={respond.isPending} onPress={() => respond.mutate({ connectionId: connection.id, response: 'reject' })} />
+      </>}
+      {connection?.status === 'PENDING' && connection.requesterId !== id && <Card><Body>Solicitud enviada. Esperando respuesta.</Body></Card>}
+      {connection?.status === 'ACCEPTED' && <Card><Body>Ya estáis conectados.</Body></Card>}
+      {connection?.status === 'REJECTED' && <Card><Body>Esta solicitud fue rechazada.</Body></Card>}
+      {(demo || (!connection && !connectionQuery.isPending && !connectionQuery.error)) && <Button label={connect.isSuccess ? 'Solicitud enviada' : `Conectar con ${name}`} disabled={demo || connect.isPending || connect.isSuccess} onPress={() => connect.mutate()} />}
       {demo && <Body style={local.small}>Las conexiones necesitan una sesión real.</Body>}
       <Button secondary label="Bloquear perfil" disabled={demo || block.isPending} onPress={() => block.mutate()} />
-      <QueryState pending={false} error={connect.error ?? block.error} />
+      <QueryState pending={false} error={(connect.error instanceof ApiError && connect.error.status === 409 ? null : connect.error) ?? respond.error ?? block.error} />
     </>}
   </Screen>;
 }
