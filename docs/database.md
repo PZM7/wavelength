@@ -12,6 +12,8 @@ UUID internos, defaults `gen_random_uuid()`. Sin dependencia de IDs musicales.
 | V4 | connections, blocks, reports; pareja única no dirigida, no self-links |
 | V5 | concerts, concert_attendances; identidad de evento por proveedor |
 | V6 | user_manual_artist_preferences; elección separada de las señales importadas |
+| V7 | music_account_artist_affinities; sincronización por cuenta musical |
+| V8 | fotos y enlaces de artistas Spotify; canciones destacadas por cuenta. Las preferencias manuales históricas se conservan pero dejan de usarse. |
 
 Índices cubren FKs, filtros por usuario/proveedor y ordenaciones de matching,
 solicitudes y conciertos. Nombres normalizados de artistas no son únicos: puede
@@ -24,9 +26,9 @@ y valores infinitos por estos checks. La PK es `(user_id, artist_id/track_id)`.
 ProviderArtist/Track tienen UNIQUE(provider, provider_id). Una cuenta de cada
 proveedor por usuario; una cuenta externa no puede pertenecer a varios usuarios.
 Añadir proveedor requiere ampliar enum y CHECK mediante una nueva migración.
-La selección manual tiene PK `(user_id, artist_id)` y se combina en consultas con
-afinidades importadas tomando el mayor peso por artista. No modifica las tablas de
-afinidades del proveedor.
+La tabla de selección manual queda como archivo histórico: no tiene endpoint de
+escritura y no se consulta para DNA ni matching. La sincronización Spotify
+reemplaza atómicamente afinidades de artistas y canciones de su cuenta.
 
 Los tokens musicales se escriben solo mediante el servicio de credenciales, que
 los cifra con AES-256-GCM antes de persistir. La clave vive fuera de la BD y del

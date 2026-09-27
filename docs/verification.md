@@ -3,6 +3,14 @@
 Base verificada el 22-09-2026; migración a Java 21 verificada el 23-09-2026.
 Véase [informe de migración](java-migration.md).
 
+Actualización del 27-09-2026: la selección manual ya no tiene pantalla ni endpoint
+y sus datos históricos no intervienen en DNA o matching. La sincronización Spotify
+importa artistas con foto y enlaces, y 20 canciones destacadas con portada; las
+pruebas de integración cubren reemplazo, consulta y desconexión. Pasaron Gradle
+`test` e `integrationTest`, TypeScript, 12 pruebas Vitest y exportación Expo para
+web, Android e iOS. La sincronización con una cuenta Spotify real todavía requiere
+probar el botón en una sesión autenticada.
+
 - Backend: Gradle 8.14.3 / Java 21, compilación de bootJar.
 - JUnit/Mockito: 12 unitarios originales migrados, 100 casos de equivalencia bit a bit
   frente al JAR original y 2 pruebas de contratos Jackson.

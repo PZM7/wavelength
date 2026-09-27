@@ -21,19 +21,20 @@ public class TasteRepository {
         return db.resultQuery(
                         """
 WITH signals AS (
-    SELECT user_id, artist_id, (short_term_score + medium_term_score + long_term_score) / 3.0 AS weight
-    FROM user_artist_affinities
-    UNION ALL
     SELECT ma.user_id, aa.artist_id,
            (aa.short_term_score + aa.medium_term_score + aa.long_term_score) / 3.0 AS weight
     FROM music_account_artist_affinities aa
     JOIN music_accounts ma ON ma.id = aa.music_account_id
-    UNION ALL
-    SELECT user_id, artist_id, 1.0 AS weight FROM user_manual_artist_preferences
 ), effective AS (
     SELECT artist_id, max(weight) AS weight FROM signals WHERE user_id = ? GROUP BY artist_id
 )
-SELECT a.id, a.name, e.weight FROM effective e JOIN artists a ON a.id = e.artist_id
+SELECT a.id, a.name, e.weight, p.image_url, p.spotify_url
+FROM effective e JOIN artists a ON a.id = e.artist_id
+LEFT JOIN LATERAL (
+    SELECT image_url, spotify_url FROM provider_artists
+    WHERE artist_id = a.id AND provider = 'SPOTIFY'
+    ORDER BY (image_url IS NULL), id LIMIT 1
+) p ON true
 ORDER BY e.weight DESC, a.name, a.id LIMIT 200
 """,
                         userId)
@@ -42,7 +43,9 @@ ORDER BY e.weight DESC, a.name, a.id LIMIT 200
                                 new ArtistWeight(
                                         row.get("id", UUID.class),
                                         row.get("name", String.class),
-                                        row.get("weight", Double.class)));
+                                        row.get("weight", Double.class),
+                                        row.get("image_url", String.class),
+                                        row.get("spotify_url", String.class)));
     }
 
     public Map<UUID, Map<UUID, Double>> weights(List<UUID> userIds) {
@@ -52,15 +55,10 @@ ORDER BY e.weight DESC, a.name, a.id LIMIT 200
                 db.resultQuery(
                                 """
 WITH signals AS (
-    SELECT user_id, artist_id, (short_term_score + medium_term_score + long_term_score) / 3.0 AS weight
-    FROM user_artist_affinities
-    UNION ALL
     SELECT ma.user_id, aa.artist_id,
            (aa.short_term_score + aa.medium_term_score + aa.long_term_score) / 3.0 AS weight
     FROM music_account_artist_affinities aa
     JOIN music_accounts ma ON ma.id = aa.music_account_id
-    UNION ALL
-    SELECT user_id, artist_id, 1.0 AS weight FROM user_manual_artist_preferences
 )
 SELECT user_id, artist_id, max(weight) AS weight FROM signals
 WHERE user_id IN (%s) GROUP BY user_id, artist_id

@@ -21,7 +21,9 @@ class SpotifyGatewayTest {
             var query = exchange.getRequestURI().getQuery();
             int status = query.contains("long_term") ? 429 : 200;
             var body = query.contains("medium_term") ? "{}"
-                    : "{\"items\":[{\"id\":\"spotify-1\",\"name\":\"Björk\"}]}";
+                    : "{\"items\":[{\"id\":\"spotify-1\",\"name\":\"Björk\","
+                    + "\"images\":[{\"url\":\"https://i.scdn.co/image/bjork\"}],"
+                    + "\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/spotify-1\"}}]}";
             var bytes = body.getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(status, bytes.length);
             try (var stream = exchange.getResponseBody()) { stream.write(bytes); }
@@ -35,10 +37,38 @@ class SpotifyGatewayTest {
             assertEquals(1, artists.size());
             assertEquals("spotify-1", artists.getFirst().providerArtistId());
             assertEquals("Björk", artists.getFirst().name());
+            assertEquals("https://i.scdn.co/image/bjork", artists.getFirst().imageUrl());
+            assertEquals("https://open.spotify.com/artist/spotify-1", artists.getFirst().spotifyUrl());
             assertEquals("MUSIC_PROVIDER_ERROR",
                     assertThrows(ApiException.class, () -> gateway.topArtists("token", "medium_term")).getCode());
             assertEquals("MUSIC_PROVIDER_RATE_LIMITED",
                     assertThrows(ApiException.class, () -> gateway.topArtists("token", "long_term")).getCode());
+        } finally { server.stop(0); }
+    }
+
+    @Test
+    void readsTopTracksWithCoverAndSpotifyAttribution() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/me/top/tracks", exchange -> {
+            assertEquals("Bearer token", exchange.getRequestHeaders().getFirst("Authorization"));
+            var bytes = ("{\"items\":[{\"id\":\"track-1\",\"name\":\"Spirit 2.0\","
+                    + "\"artists\":[{\"id\":\"artist-1\",\"name\":\"Sampha\"}],"
+                    + "\"album\":{\"images\":[{\"url\":\"https://i.scdn.co/image/spirit\"}]},"
+                    + "\"external_urls\":{\"spotify\":\"https://open.spotify.com/track/track-1\"}}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (var stream = exchange.getResponseBody()) { stream.write(bytes); }
+        });
+        server.start();
+        try {
+            var base = "http://127.0.0.1:" + server.getAddress().getPort();
+            var gateway = new SpotifyGateway(mock(MusicConnectSettings.class), new ObjectMapper(),
+                    HttpClient.newHttpClient(), base, base);
+            var tracks = gateway.topTracks("token");
+            assertEquals(1, tracks.size());
+            assertEquals("Sampha", tracks.getFirst().artist().name());
+            assertEquals("https://i.scdn.co/image/spirit", tracks.getFirst().imageUrl());
+            assertEquals("https://open.spotify.com/track/track-1", tracks.getFirst().spotifyUrl());
         } finally { server.stop(0); }
     }
 
@@ -50,7 +80,7 @@ class SpotifyGatewayTest {
             var initial = body.contains("grant_type=authorization_code");
             var revoked = body.contains("refresh_token=revoked");
             var response = revoked ? "{\"error\":\"invalid_grant\"}" : initial
-                    ? "{\"access_token\":\"first\",\"refresh_token\":\"refresh\",\"expires_in\":3600,\"token_type\":\"Bearer\",\"scope\":\"user-read-private user-top-read user-read-recently-played\"}"
+                    ? "{\"access_token\":\"first\",\"refresh_token\":\"refresh\",\"expires_in\":3600,\"token_type\":\"Bearer\",\"scope\":\"user-read-private user-top-read\"}"
                     : "{\"access_token\":\"second\",\"expires_in\":3600,\"token_type\":\"Bearer\"}";
             if (initial) assertTrue(body.contains("code_verifier=verifier"));
             else assertTrue(body.contains("refresh_token=refresh") || revoked);

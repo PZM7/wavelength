@@ -14,7 +14,6 @@ export default function AppLayout() {
     <Tabs.Screen name="chat" options={{ title: 'Chat', tabBarIcon: ({ color }) => <Ionicons name="chatbubble-ellipses-outline" size={20} color={color} /> }} />
     <Tabs.Screen name="profile" options={{ title: 'Tú', tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={20} color={color} /> }} />
     <Tabs.Screen name="music-connection" options={{ href: null, tabBarStyle: { display: 'none' } }} />
-    <Tabs.Screen name="favorite-artists" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     <Tabs.Screen name="match/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
   </Tabs>;
 }

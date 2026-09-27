@@ -24,7 +24,7 @@ public class SpotifyTasteSyncPersistence {
 
     @Transactional
     public SpotifyTasteSyncService.SyncResponse replace(UUID userId, UUID accountId,
-            List<SpotifyTasteSyncService.ArtistScores> artists) {
+            List<SpotifyTasteSyncService.ArtistScores> artists, List<ProviderTrackData> tracks) {
         var account = accounts.lockByUserIdAndProvider(userId, MusicProvider.SPOTIFY)
                 .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "MUSIC_RECONNECT_REQUIRED",
                         "Reconnect Spotify to continue"));
@@ -32,9 +32,11 @@ public class SpotifyTasteSyncPersistence {
             throw new ApiException(HttpStatus.CONFLICT, "MUSIC_RECONNECT_REQUIRED",
                     "Spotify account changed during sync; try again");
         jdbc.update("DELETE FROM music_account_artist_affinities WHERE music_account_id = ?", accountId);
+        jdbc.update("DELETE FROM music_account_top_tracks WHERE music_account_id = ?", accountId);
         Instant now = Instant.now();
         for (var artist : artists) {
-            UUID artistId = resolveArtist(artist.providerId(), artist.name());
+            UUID artistId = resolveArtist(artist.providerId(), artist.name(),
+                    artist.imageUrl(), artist.spotifyUrl());
             jdbc.update("""
                     INSERT INTO music_account_artist_affinities
                         (music_account_id, artist_id, short_term_score, medium_term_score, long_term_score, updated_at)
@@ -47,16 +49,38 @@ public class SpotifyTasteSyncPersistence {
                     """, accountId, artistId, artist.shortTerm(), artist.mediumTerm(),
                     artist.longTerm(), Timestamp.from(now));
         }
-        return new SpotifyTasteSyncService.SyncResponse(artists.size(), now);
+        for (int rank = 0; rank < tracks.size(); rank++) {
+            var track = tracks.get(rank);
+            jdbc.update("""
+                    INSERT INTO music_account_top_tracks
+                        (music_account_id, provider_track_id, title, artist_name, image_url,
+                         spotify_url, rank, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (music_account_id, provider_track_id) DO UPDATE SET
+                        title = excluded.title, artist_name = excluded.artist_name,
+                        image_url = excluded.image_url, spotify_url = excluded.spotify_url,
+                        rank = least(music_account_top_tracks.rank, excluded.rank),
+                        updated_at = excluded.updated_at
+                    """, accountId, track.providerTrackId(), track.title(), track.artist().name(),
+                    track.imageUrl(), track.spotifyUrl(), rank + 1, Timestamp.from(now));
+        }
+        return new SpotifyTasteSyncService.SyncResponse(artists.size(), tracks.size(), now);
     }
 
-    private UUID resolveArtist(String providerId, String name) {
+    private UUID resolveArtist(String providerId, String name, String imageUrl, String spotifyUrl) {
         jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", Object.class,
                 "SPOTIFY:" + providerId);
         var mapped = jdbc.query("""
                 SELECT artist_id FROM provider_artists WHERE provider = 'SPOTIFY' AND provider_artist_id = ?
                 """, (rs, row) -> rs.getObject(1, UUID.class), providerId);
-        if (!mapped.isEmpty()) return mapped.getFirst();
+        if (!mapped.isEmpty()) {
+            jdbc.update("""
+                    UPDATE provider_artists SET image_url = coalesce(?, image_url),
+                        spotify_url = coalesce(?, spotify_url)
+                    WHERE provider = 'SPOTIFY' AND provider_artist_id = ?
+                    """, imageUrl, spotifyUrl, providerId);
+            return mapped.getFirst();
+        }
 
         String normalized = Normalizer.normalize(name, Normalizer.Form.NFKC)
                 .strip().replaceAll("[\\p{Z}\\s]+", " ").toLowerCase(Locale.ROOT);
@@ -72,9 +96,9 @@ public class SpotifyTasteSyncPersistence {
                     id, name, normalized);
         } else id = existing.getFirst();
         jdbc.update("""
-                INSERT INTO provider_artists (artist_id, provider, provider_artist_id)
-                VALUES (?, 'SPOTIFY', ?)
-                """, id, providerId);
+                INSERT INTO provider_artists (artist_id, provider, provider_artist_id, image_url, spotify_url)
+                VALUES (?, 'SPOTIFY', ?, ?, ?)
+                """, id, providerId, imageUrl, spotifyUrl);
         return id;
     }
 }

@@ -12,8 +12,8 @@ El backend inicia Authorization Code **con PKCE S256**. Guarda `state` y el
 `code_verifier` durante diez minutos en Redis; el estado se consume una sola vez.
 Spotify devuelve el código al callback del backend, que intercambia el código,
 consulta `/v1/me` para obtener `account_id` y guarda access y refresh tokens
-cifrados. Se solicitan `user-read-private`, `user-top-read` y
-`user-read-recently-played`. Los tokens nunca se devuelven a la app.
+cifrados. Se solicitan `user-read-private` y `user-top-read`.
+Los tokens nunca se devuelven a la app.
 
 Para activarlo, crear una app en Spotify Developer Dashboard y configurar:
 
@@ -34,16 +34,19 @@ Cuando Spotify devuelve otro refresh token, reemplaza el anterior; si no lo
 devuelve, conserva el vigente. Si Spotify rechaza el refresh token, se devuelve
 `MUSIC_RECONNECT_REQUIRED` y hay que volver a autorizar.
 
-Después de conectar, **Actualizar mis artistas de Spotify** consulta los 50
+Después de conectar, **Sincronizar música de Spotify** consulta los 50
 artistas principales de los periodos corto, medio y largo. Cada posición se
 convierte en una señal entre 0 y 1; Music DNA y las coincidencias usan la media
 de los tres periodos. Repetir la sincronización reemplaza sólo los artistas de
-esa cuenta Spotify. La selección manual se conserva y, si un artista aparece
-en ambas fuentes, se usa la señal mayor. Si Spotify rechaza la autorización,
+esa cuenta Spotify. Si Spotify rechaza la autorización,
 hay que volver a autorizar; si limita peticiones, se puede reintentar más tarde.
-Una respuesta incompleta no borra los gustos anteriores. Desconectar la cuenta
-borra también sus artistas importados. Las canciones y escuchas recientes aún
-no se importan ni se usan para calcular afinidades.
+Una respuesta incompleta no borra los gustos anteriores. También consulta las
+20 canciones principales de Spotify del periodo medio y muestra sus portadas.
+Estas canciones representan afinidad calculada por Spotify, no un contador de
+reproducciones. Las fotos de los artistas y las portadas se muestran sin recortar,
+con atribución y enlace al contenido original en Spotify. Desconectar la cuenta
+borra sus artistas y canciones importados. Las escuchas recientes aún no se
+importan ni se usan para calcular afinidades.
 
 ## Apple Music
 
@@ -101,9 +104,10 @@ El usuario puede retirar también el acceso desde la configuración del proveedo
 ## Alcance y verificación
 
 El enlace y almacenamiento de credenciales están implementados. Spotify importa
-artistas al solicitarlo el usuario; Apple Music aún no sincroniza gustos. Los
-usuarios autenticados también pueden elegir artistas favoritos manualmente. Esa
-selección se guarda separada de los gustos importados y alimenta Music DNA y matching.
+artistas y canciones al solicitarlo el usuario; Apple Music aún no sincroniza gustos.
+La selección manual de artistas se ha retirado de la interfaz y la API. Sus filas
+históricas permanecen en la base de datos para recuperación, pero ya no participan
+en Music DNA ni en las coincidencias.
 La demo no conecta proveedores ni llama al backend.
 
 Las pruebas locales cubren cifrado, rotación, estado de un solo uso, firma del

@@ -21,6 +21,8 @@ import com.wavelength.matching.MatchService;
 import com.wavelength.music.MusicAccount;
 import com.wavelength.music.MusicAccountRepository;
 import com.wavelength.music.MusicProvider;
+import com.wavelength.music.ProviderArtistData;
+import com.wavelength.music.ProviderTrackData;
 import com.wavelength.music.SpotifyTasteSyncPersistence;
 import com.wavelength.music.SpotifyTasteSyncService;
 import com.wavelength.social.ConnectionService;
@@ -145,6 +147,23 @@ class ApiIntegrationTest {
         new DevSeed(jdbc, "dev|marc").run(new DefaultApplicationArguments());
     }
 
+    private void seedImportedTaste() {
+        for (int index = 0; index < 4; index++) {
+            UUID userId = DevSeed.userId(index);
+            UUID accountId = UUID.randomUUID();
+            jdbc.update("""
+                    INSERT INTO music_accounts (id, user_id, provider, provider_user_id)
+                    VALUES (?, ?, 'SPOTIFY', ?)
+                    """, accountId, userId, "test-synced-" + index);
+            jdbc.update("""
+                    INSERT INTO music_account_artist_affinities
+                        (music_account_id, artist_id, short_term_score, medium_term_score, long_term_score)
+                    SELECT ?, artist_id, short_term_score, medium_term_score, long_term_score
+                    FROM user_artist_affinities WHERE user_id = ?
+                    """, accountId, userId);
+        }
+    }
+
     @Test
     void healthPublicPrivateRoutesRequireAuthAndProductionDocsDisabled() throws Exception {
         mvc.perform(get("/api/v1/health"))
@@ -265,6 +284,7 @@ class ApiIntegrationTest {
 
     @Test
     void rankedSqlMatchesMetricAndPaginatesWithoutDuplicates() throws Exception {
+        seedImportedTaste();
         var all = matches.findTopMatches(marc, 50);
         assertEquals(3, all.matches().size());
         assertEquals(lucia, all.matches().getFirst().user().id());
@@ -286,95 +306,61 @@ class ApiIntegrationTest {
     }
 
     @Test
-    void manuallyChosenArtistsDriveDnaAndMatchesWithoutMusicAccounts() throws Exception {
-        mvc.perform(get("/api/v1/me/favorite-artists"))
-                .andExpect(status().isUnauthorized());
+    void manualArtistEndpointIsGoneAndOldSelectionsDoNotAffectTaste() throws Exception {
+        mvc.perform(get("/api/v1/me").with(asUser("new"))).andExpect(status().isOk());
+        UUID userId = jdbc.queryForObject("SELECT id FROM users WHERE external_auth_id = ?", UUID.class,
+                "dev|new");
+        jdbc.update("INSERT INTO user_manual_artist_preferences (user_id, artist_id) VALUES (?, ?)",
+                userId, DevSeed.artistId(0));
+        jdbc.update("""
+                INSERT INTO user_artist_affinities
+                    (user_id, artist_id, short_term_score, medium_term_score, long_term_score)
+                VALUES (?, ?, 1, 1, 1)
+                """, userId, DevSeed.artistId(1));
         mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("new"))
-                        .contentType("application/json")
-                        .content("{\"names\":[\"Björk\",\"Massive Attack\"]}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Björk"))
-                .andExpect(jsonPath("$[1].name").value("Massive Attack"));
-        mvc.perform(get("/api/v1/artists?query=bj").with(asUser("new")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Björk"));
+                .contentType("application/json").content("{\"names\":[\"Sampha\"]}"))
+                .andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/me/music-dna").with(asUser("new")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ARTIST_SIGNALS_ONLY"))
-                .andExpect(jsonPath("$.topArtists.length()").value(2));
-
-        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("other"))
-                        .contentType("application/json")
-                        .content("{\"names\":[\"björk\"]}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Björk"));
-        mvc.perform(patch("/api/v1/me").with(asUser("other"))
-                        .contentType("application/json").content("{\"discoverable\":true}"))
-                .andExpect(status().isOk());
-        mvc.perform(get("/api/v1/matches").with(asUser("new")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.matches[0].reasons[0].label").value("1 artista en común"))
-                .andExpect(jsonPath("$.matches[0].reasons[0].count").value(1));
-
-        for (String body : List.of("{\"names\":[\"Björk\",\"björk\"]}",
-                "{\"names\":[\"\"]}", "{\"names\":null}")) {
-            mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("new"))
-                            .contentType("application/json").content(body))
-                    .andExpect(status().isBadRequest());
-        }
-        String tooMany = "{\"names\":[" + java.util.stream.IntStream.range(0, 21)
-                .mapToObj(index -> "\"Artist " + index + "\"")
-                .collect(java.util.stream.Collectors.joining(",")) + "]}";
-        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("new"))
-                        .contentType("application/json").content(tooMany))
-                .andExpect(status().isBadRequest());
-        mvc.perform(get("/api/v1/me/favorite-artists").with(asUser("new")))
-                .andExpect(jsonPath("$.length()").value(2));
-
-        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("new"))
-                        .contentType("application/json").content("{\"names\":[]}"))
-                .andExpect(status().isOk());
-        mvc.perform(get("/api/v1/me/music-dna").with(asUser("new")))
-                .andExpect(jsonPath("$.status").value("INSUFFICIENT_DATA"));
-        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("marc"))
-                        .contentType("application/json").content("{\"names\":[\"Björk\"]}"))
-                .andExpect(status().isOk());
-        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("marc"))
-                        .contentType("application/json").content("{\"names\":[]}"))
-                .andExpect(status().isOk());
-        mvc.perform(get("/api/v1/me/music-dna").with(asUser("marc")))
-                .andExpect(jsonPath("$.status").value("ARTIST_SIGNALS_ONLY"));
+                .andExpect(jsonPath("$.status").value("INSUFFICIENT_DATA"))
+                .andExpect(jsonPath("$.topArtists.length()").value(0));
     }
 
     @Test
     void spotifySyncReplacesOnlyImportedTasteAndDisconnectRemovesIt() throws Exception {
+        seedImportedTaste();
         mvc.perform(get("/api/v1/me").with(asUser("spotify-sync"))).andExpect(status().isOk());
         UUID userId = jdbc.queryForObject("SELECT id FROM users WHERE external_auth_id = ?", UUID.class,
                 "dev|spotify-sync");
         var account = musicAccounts.saveAndFlush(new MusicAccount(userId, MusicProvider.SPOTIFY,
                 "spotify-sync-user"));
-        mvc.perform(put("/api/v1/me/favorite-artists").with(asUser("spotify-sync"))
-                .contentType("application/json").content("{\"names\":[\"Björk\"]}"))
-                .andExpect(status().isOk());
-
         spotifyTaste.replace(userId, account.getId(), List.of(
-                new SpotifyTasteSyncService.ArtistScores("spotify-sampha", "Sampha", 1, 0.8, 0.6),
-                new SpotifyTasteSyncService.ArtistScores("spotify-bjork", "Björk", 0.9, 0, 0)));
+                new SpotifyTasteSyncService.ArtistScores("spotify-sampha", "Sampha", 1, 0.8, 0.6,
+                        "https://i.scdn.co/image/sampha", "https://open.spotify.com/artist/spotify-sampha"),
+                new SpotifyTasteSyncService.ArtistScores("spotify-bjork", "Björk", 0.9, 0, 0)),
+                List.of(new ProviderTrackData("spotify-track-1", "Spirit 2.0",
+                        new ProviderArtistData("spotify-sampha", "Sampha"), null,
+                        "https://i.scdn.co/image/spirit", "https://open.spotify.com/track/spotify-track-1")));
         mvc.perform(get("/api/v1/me/music-dna").with(asUser("spotify-sync")))
-                .andExpect(jsonPath("$.topArtists.length()").value(2));
+                .andExpect(jsonPath("$.topArtists.length()").value(2))
+                .andExpect(jsonPath("$.topArtists[0].imageUrl").value("https://i.scdn.co/image/sampha"));
+        mvc.perform(get("/api/v1/me/top-tracks").with(asUser("spotify-sync")))
+                .andExpect(jsonPath("$[0].title").value("Spirit 2.0"))
+                .andExpect(jsonPath("$[0].imageUrl").value("https://i.scdn.co/image/spirit"));
         mvc.perform(get("/api/v1/matches").with(asUser("spotify-sync")))
                 .andExpect(jsonPath("$.matches[0].reasons[0].count").value(1));
 
         spotifyTaste.replace(userId, account.getId(), List.of(
-                new SpotifyTasteSyncService.ArtistScores("spotify-massive", "Massive Attack", 1, 0.5, 0)));
+                new SpotifyTasteSyncService.ArtistScores("spotify-massive", "Massive Attack", 1, 0.5, 0)),
+                List.of());
         mvc.perform(get("/api/v1/me/music-dna").with(asUser("spotify-sync")))
-                .andExpect(jsonPath("$.topArtists.length()").value(2))
-                .andExpect(jsonPath("$.topArtists[0].name").value("Björk"));
+                .andExpect(jsonPath("$.topArtists.length()").value(1))
+                .andExpect(jsonPath("$.topArtists[0].name").value("Massive Attack"));
+        mvc.perform(get("/api/v1/me/top-tracks").with(asUser("spotify-sync")))
+                .andExpect(jsonPath("$.length()").value(0));
         mvc.perform(delete("/api/v1/me/music-connections/SPOTIFY").with(asUser("spotify-sync")))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/me/music-dna").with(asUser("spotify-sync")))
-                .andExpect(jsonPath("$.topArtists.length()").value(1))
-                .andExpect(jsonPath("$.topArtists[0].name").value("Björk"));
+                .andExpect(jsonPath("$.topArtists.length()").value(0));
     }
 
     @Test

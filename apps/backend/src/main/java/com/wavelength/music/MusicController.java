@@ -13,12 +13,15 @@ public class MusicController {
     private final CurrentUserProvider current;
     private final MusicCredentialService credentials;
     private final MusicDnaService dna;
+    private final TopTrackRepository topTracks;
 
     public MusicController(
-            CurrentUserProvider current, MusicCredentialService credentials, MusicDnaService dna) {
+            CurrentUserProvider current, MusicCredentialService credentials, MusicDnaService dna,
+            TopTrackRepository topTracks) {
         this.current = current;
         this.credentials = credentials;
         this.dna = dna;
+        this.topTracks = topTracks;
     }
 
     @GetMapping("/music-accounts")
@@ -36,5 +39,10 @@ public class MusicController {
     @GetMapping("/music-dna")
     public MusicDna dna() {
         return dna.get(current.get().getId());
+    }
+
+    @GetMapping("/top-tracks")
+    public List<TopTrack> topTracks() {
+        return topTracks.forUser(current.get().getId());
     }
 }

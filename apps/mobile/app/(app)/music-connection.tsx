@@ -8,7 +8,7 @@ import type { MusicAccount } from '../../src/types/models';
 import { Screen, Title, Body, Card, Button, styles, QueryState, colors } from '../../src/components/ui';
 
 const providers: { id: MusicAccount['provider']; name: string; summary: string }[] = [
-  { id: 'SPOTIFY', name: 'Spotify', summary: 'Autoriza la lectura de tus artistas, canciones favoritas y escuchas recientes.' },
+  { id: 'SPOTIFY', name: 'Spotify', summary: 'Autoriza la lectura de tus artistas y canciones destacados.' },
   { id: 'APPLE_MUSIC', name: 'Apple Music', summary: 'Autoriza con MusicKit el acceso a tu biblioteca y actividad musical.' },
 ];
 
@@ -47,8 +47,10 @@ export default function MusicConnection() {
     try {
       await api.disconnectMusic(provider);
       await Promise.all([queries.invalidateQueries({ queryKey: ['accounts'] }),
-        queries.invalidateQueries({ queryKey: ['dna'] }), queries.invalidateQueries({ queryKey: ['matches'] })]);
-      setNotice('Cuenta desconectada. Se han borrado sus credenciales y gustos importados.');
+        queries.invalidateQueries({ queryKey: ['dna'] }),
+        queries.invalidateQueries({ queryKey: ['top-tracks'] }),
+        queries.invalidateQueries({ queryKey: ['matches'] })]);
+      setNotice('Cuenta desconectada. Se han borrado sus credenciales, artistas y canciones importados.');
     } catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudo desconectar.'); }
     finally { setBusy(null); }
   }
@@ -59,10 +61,9 @@ export default function MusicConnection() {
     try {
       const result = await api.syncSpotify();
       await Promise.all([queries.invalidateQueries({ queryKey: ['dna'] }),
+        queries.invalidateQueries({ queryKey: ['top-tracks'] }),
         queries.invalidateQueries({ queryKey: ['matches'] })]);
-      setNotice(result.artistsImported > 0
-        ? `${result.artistsImported} artistas de Spotify actualizados en tu Music DNA.`
-        : 'Spotify no ha devuelto todavía artistas favoritos para esta cuenta.');
+      setNotice(`${result.artistsImported} artistas y ${result.tracksImported} canciones de Spotify sincronizados.`);
     } catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudieron importar tus artistas.'); }
     finally { setBusy(null); }
   }
@@ -76,12 +77,13 @@ export default function MusicConnection() {
       return <Card key={provider.id}><Text style={styles.heading}>{provider.name}</Text>
         <Body>{connected ? 'Conectado' : 'Sin conectar'}</Body><Body>{provider.summary}</Body>
         {!demo && !configured && <Body>Disponible al configurar este proveedor en el servidor.</Body>}
+        {provider.id === 'APPLE_MUSIC' && <Body>La importación de gustos de Apple Music estará disponible más adelante.</Body>}
         {demo && <Body>Inicia sesión para conectar una cuenta real. La demo no guarda cambios.</Body>}
         <View style={{ gap: 8 }}>
           <Button label={busy === provider.id ? 'Espera…' : connected ? 'Volver a autorizar' : `Conectar ${provider.name}`}
             disabled={demo || !configured || busy !== null} onPress={() => void connect(provider.id)} />
           {connected && provider.id === 'SPOTIFY' && <Button secondary
-            label="Actualizar mis artistas de Spotify" disabled={busy !== null}
+            label="Sincronizar música de Spotify" disabled={busy !== null}
             onPress={() => void syncSpotify()} />}
           {connected && <Button secondary label={`Desconectar ${provider.name}`} disabled={busy !== null}
             onPress={() => void disconnect(provider.id)} />}
@@ -89,6 +91,6 @@ export default function MusicConnection() {
       </Card>;
     })}
     {notice && <Text accessibilityRole="alert" style={{ color: colors.ink }}>{notice}</Text>}
-    <Body>Spotify actualiza tus artistas favoritos cuando tú lo pides. Tus artistas elegidos manualmente se conservan.</Body>
+    <Body>Tu gusto musical se crea al sincronizar Spotify. Las canciones destacadas reflejan la afinidad calculada por Spotify, no un recuento exacto de reproducciones.</Body>
   </Screen>;
 }

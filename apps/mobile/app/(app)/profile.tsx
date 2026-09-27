@@ -21,7 +21,7 @@ export default function Profile() {
       {mutation.isSuccess && <Body>Perfil guardado.</Body>}
     </Card>}
     <QueryState pending={false} error={mutation.error} />
-    <Button secondary label="Mis artistas favoritos" onPress={() => router.push('/(app)/favorite-artists')} />
+    <Button secondary label="Conexiones musicales" onPress={() => router.push('/(app)/music-connection')} />
     {session.mode === 'demo' && <Body>La demo permite explorar. Los cambios no se guardan.</Body>}
     <Button secondary label={session.mode === 'demo' ? 'Salir de la demo' : 'Cerrar sesión'} onPress={() => void session.signOut().catch(error => setSignOutError(error instanceof Error ? error : new Error('No se ha podido cerrar la sesión.')))} />
     <QueryState pending={false} error={signOutError} />

@@ -24,15 +24,10 @@ public class MatchRepository {
         return db.resultQuery(
                         """
 WITH signals AS (
-    SELECT user_id, artist_id, (short_term_score + medium_term_score + long_term_score) / 3.0 AS w
-    FROM user_artist_affinities
-    UNION ALL
     SELECT ma.user_id, aa.artist_id,
            (aa.short_term_score + aa.medium_term_score + aa.long_term_score) / 3.0 AS w
     FROM music_account_artist_affinities aa
     JOIN music_accounts ma ON ma.id = aa.music_account_id
-    UNION ALL
-    SELECT user_id, artist_id, 1.0 AS w FROM user_manual_artist_preferences
 ), weights AS (
     SELECT user_id, artist_id, max(w) AS w FROM signals GROUP BY user_id, artist_id
 ), mine AS (SELECT artist_id, w FROM weights WHERE user_id = ? AND w > 0),

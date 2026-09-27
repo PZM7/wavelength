@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wavelength.common.ApiException;
 import com.wavelength.music.ProviderArtistData;
+import com.wavelength.music.ProviderTrackData;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -25,7 +26,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SpotifyGateway {
-    private static final String SCOPES = "user-read-private user-top-read user-read-recently-played";
+    private static final String SCOPES = "user-read-private user-top-read";
     private final MusicConnectSettings settings;
     private final ObjectMapper mapper;
     private final HttpClient http;
@@ -92,10 +93,44 @@ public class SpotifyGateway {
     }
 
     public List<ProviderArtistData> topArtists(String accessToken, String timeRange) {
+        var items = topItems(accessToken, "artists", timeRange, 50);
+        var artists = new ArrayList<ProviderArtistData>();
+        for (var item : items) {
+            var id = item.path("id").asText("");
+            var name = item.path("name").asText("").trim();
+            requireIdentity(id, name);
+            var link = spotifyUrl(item.path("external_urls").path("spotify"), "artist");
+            artists.add(new ProviderArtistData(id, name,
+                    link == null ? null : imageUrl(item.path("images")), link));
+        }
+        return artists;
+    }
+
+    public List<ProviderTrackData> topTracks(String accessToken) {
+        var items = topItems(accessToken, "tracks", "medium_term", 20);
+        var tracks = new ArrayList<ProviderTrackData>();
+        for (var item : items) {
+            var id = item.path("id").asText("");
+            var title = item.path("name").asText("").trim();
+            requireIdentity(id, title);
+            var artists = item.path("artists");
+            if (!artists.isArray() || artists.isEmpty()) throw providerError();
+            var artistId = artists.get(0).path("id").asText("");
+            var artistName = artists.get(0).path("name").asText("").trim();
+            requireIdentity(artistId, artistName);
+            var link = spotifyUrl(item.path("external_urls").path("spotify"), "track");
+            tracks.add(new ProviderTrackData(id, title,
+                    new ProviderArtistData(artistId, artistName), null,
+                    link == null ? null : imageUrl(item.path("album").path("images")), link));
+        }
+        return tracks;
+    }
+
+    private JsonNode topItems(String accessToken, String type, String timeRange, int limit) {
         if (!List.of("short_term", "medium_term", "long_term").contains(timeRange))
             throw new IllegalArgumentException("Unsupported Spotify time range");
-        var request = HttpRequest.newBuilder(URI.create(apiBase + "/v1/me/top/artists?time_range="
-                        + timeRange + "&limit=50"))
+        var request = HttpRequest.newBuilder(URI.create(apiBase + "/v1/me/top/" + type
+                        + "?time_range=" + timeRange + "&limit=" + limit))
                 .timeout(Duration.ofSeconds(10))
                 .header("Authorization", "Bearer " + accessToken)
                 .header("Accept", "application/json").GET().build();
@@ -109,17 +144,41 @@ public class SpotifyGateway {
         if (response.statusCode() != 200) throw providerError();
         try {
             var items = mapper.readTree(response.body()).path("items");
-            if (!items.isArray() || items.size() > 50) throw providerError();
-            var artists = new ArrayList<ProviderArtistData>();
-            for (var item : items) {
-                var id = item.path("id").asText("");
-                var name = item.path("name").asText("").trim();
-                if (id.isBlank() || id.length() > 255 || name.isBlank() || name.length() > 255
-                        || name.codePoints().anyMatch(Character::isISOControl)) throw providerError();
-                artists.add(new ProviderArtistData(id, name));
-            }
-            return artists;
+            if (!items.isArray() || items.size() > limit) throw providerError();
+            return items;
         } catch (IOException e) { throw providerError(); }
+    }
+
+    private static void requireIdentity(String id, String name) {
+        if (id.isBlank() || id.length() > 255 || name.isBlank() || name.length() > 255
+                || name.codePoints().anyMatch(Character::isISOControl)) throw providerError();
+    }
+
+    private static String imageUrl(JsonNode images) {
+        if (!images.isArray()) return null;
+        for (var image : images) {
+            var url = image.path("url").asText("");
+            if (url.length() > 2048) continue;
+            try {
+                var uri = URI.create(url);
+                var host = uri.getHost();
+                if ("https".equals(uri.getScheme()) && uri.getRawUserInfo() == null && host != null
+                        && (host.equals("i.scdn.co") || host.endsWith(".spotifycdn.com"))) return url;
+            } catch (IllegalArgumentException ignored) { /* Optional artwork may be absent. */ }
+        }
+        return null;
+    }
+
+    private static String spotifyUrl(JsonNode value, String type) {
+        var url = value.asText("");
+        if (url.length() > 2048) return null;
+        try {
+            var uri = URI.create(url);
+            if ("https".equals(uri.getScheme()) && "open.spotify.com".equals(uri.getHost())
+                    && uri.getRawUserInfo() == null && uri.getRawQuery() == null
+                    && uri.getPath().startsWith("/" + type + "/")) return url;
+        } catch (IllegalArgumentException ignored) { /* The link is optional. */ }
+        return null;
     }
 
     private Tokens token(Map<String, String> fields, boolean initial) {

@@ -37,8 +37,7 @@ public class SpotifyMusicProviderClient implements MusicProviderClient {
 
     @Override
     public List<ProviderTrackData> getTopTracks(MusicAccount account) {
-        // Track affinities are not part of the current artist-based matching model.
-        return List.of();
+        return spotify.topTracks(credentials.accessTokenForSpotify(account.getUserId()));
     }
 
     @Override
