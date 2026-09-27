@@ -50,7 +50,10 @@ export function useApi() {
       },
       patchProfile: (patch: ProfilePatch): Promise<Profile> => { realOnly(); return http('/api/v1/me', { method: 'PATCH', body: JSON.stringify(patch) }); },
       connect: (id: string): Promise<Connection> => { realOnly(); return http(`/api/v1/connections/${encodeURIComponent(id)}`, { method: 'POST' }); },
-      connectionWith: (id: string): Promise<Connection | undefined> => demo ? Promise.resolve(undefined) : http(`/api/v1/connections/with/${encodeURIComponent(id)}`),
+      connectionWith: async (id: string): Promise<Connection | null> => {
+        if (demo) return null;
+        return await http<Connection | undefined>(`/api/v1/connections/with/${encodeURIComponent(id)}`) ?? null;
+      },
       respondToConnection: (id: string, response: 'accept' | 'reject'): Promise<Connection> => {
         realOnly();
         return http(`/api/v1/connections/${encodeURIComponent(id)}/${response}`, { method: 'POST' });
