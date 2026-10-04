@@ -50,6 +50,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -429,6 +430,83 @@ JOIN music_accounts ma ON ma.id = aa.music_account_id WHERE ma.user_id = ?
                 .andExpect(status().isConflict());
         mvc.perform(post("/api/v1/connections/" + marc).with(asUser("marc")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void chatRequiresAcceptedConnectionAndBlockRevokesBothParticipants() throws Exception {
+        var connection = connections.request(marc, lucia);
+        String path = "/api/v1/conversations/" + connection.id();
+        mvc.perform(get(path).with(asUser("marc"))).andExpect(status().isNotFound());
+        mvc.perform(get(path + "/messages").with(asUser("marc"))).andExpect(status().isNotFound());
+        mvc.perform(post(path + "/messages").with(asUser("marc"))
+                .contentType("application/json").content("{\"body\":\"Hola\",\"clientMessageId\":\"first\"}"))
+                .andExpect(status().isNotFound());
+        connections.respond(lucia, connection.id(), com.wavelength.social.ConnectionStatus.ACCEPTED);
+        jdbc.update("UPDATE users SET discoverable = false WHERE id = ?", lucia);
+        mvc.perform(get(path).with(asUser("marc")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.otherUser.id").value(lucia.toString()));
+        mvc.perform(post(path + "/messages").with(asUser("marc"))
+                .contentType("application/json").content("{\"body\":\" Hola Lucía \",\"clientMessageId\":\"first\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.body").value("Hola Lucía"))
+                .andExpect(jsonPath("$.senderId").value(marc.toString()));
+        mvc.perform(get(path + "/messages").with(asUser("lucia")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.messages[0].body").value("Hola Lucía"));
+        mvc.perform(get(path).with(asUser("alex"))).andExpect(status().isNotFound());
+        mvc.perform(get(path + "/messages").with(asUser("alex"))).andExpect(status().isNotFound());
+        mvc.perform(post(path + "/messages").with(asUser("alex"))
+                .contentType("application/json").content("{\"body\":\"Hola\",\"clientMessageId\":\"third-party\"}"))
+                .andExpect(status().isNotFound());
+        privacy.block(lucia, marc);
+        for (String subject : List.of("marc", "lucia")) {
+            mvc.perform(get(path + "/messages").with(asUser(subject))).andExpect(status().isNotFound());
+            mvc.perform(post(path + "/messages").with(asUser(subject))
+                    .contentType("application/json").content("{\"body\":\"Otro\",\"clientMessageId\":\"after-block\"}"))
+                    .andExpect(status().isNotFound());
+        }
+        privacy.unblock(lucia, marc);
+        mvc.perform(get(path + "/messages").with(asUser("marc"))).andExpect(status().isNotFound());
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM chat_messages", Integer.class));
+    }
+
+    @Test
+    void chatPersistsMessagesPaginatesAndDeduplicatesRetries() throws Exception {
+        var connection = connections.request(marc, lucia);
+        connections.respond(lucia, connection.id(), com.wavelength.social.ConnectionStatus.ACCEPTED);
+        String path = "/api/v1/conversations/" + connection.id() + "/messages";
+        String firstBody = "{\"body\":\"Primero\",\"clientMessageId\":\"one\"}";
+        var first = mvc.perform(post(path).with(asUser("marc")).contentType("application/json").content(firstBody))
+                .andExpect(status().isCreated()).andReturn();
+        String firstId = mapper.readTree(first.getResponse().getContentAsString()).get("id").asText();
+        mvc.perform(post(path).with(asUser("marc")).contentType("application/json").content(firstBody))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(firstId));
+        mvc.perform(post(path).with(asUser("marc")).contentType("application/json")
+                .content("{\"body\":\"Contenido distinto\",\"clientMessageId\":\"one\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(post(path).with(asUser("lucia")).contentType("application/json")
+                .content("{\"body\":\"Segundo\",\"clientMessageId\":\"one\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.senderId").value(lucia.toString()));
+        mvc.perform(post(path).with(asUser("marc")).contentType("application/json")
+                .content("{\"body\":\"Tercero\",\"clientMessageId\":\"three\"}"))
+                .andExpect(status().isCreated());
+        var latest = mvc.perform(get(path + "?limit=2").with(asUser("lucia")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.messages[0].body").value("Segundo"))
+                .andExpect(jsonPath("$.messages[1].body").value("Tercero")).andReturn();
+        String cursor = mapper.readTree(latest.getResponse().getContentAsString()).get("nextCursor").asText();
+        mvc.perform(get(path + "?limit=2&before=" + cursor).with(asUser("lucia")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.messages.length()").value(1))
+                .andExpect(jsonPath("$.messages[0].id").value(firstId))
+                .andExpect(jsonPath("$.nextCursor").isEmpty());
+        for (String invalidBody : List.of(" ", "x".repeat(2001))) {
+            mvc.perform(post(path).with(asUser("marc")).contentType("application/json")
+                    .content(mapper.writeValueAsString(Map.of("body", invalidBody, "clientMessageId", "invalid"))))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(get(path + "?before=0").with(asUser("marc"))).andExpect(status().isBadRequest());
+        mvc.perform(get(path + "?limit=101").with(asUser("marc"))).andExpect(status().isBadRequest());
+        assertEquals(3, jdbc.queryForObject("SELECT count(*) FROM chat_messages", Integer.class));
     }
 
     @Test

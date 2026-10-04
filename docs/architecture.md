@@ -54,6 +54,11 @@ flowchart TD
 - La bandeja de conexiones aplica la misma visibilidad que el perfil público:
   solo incluye a la otra persona si es discoverable o la conexión está aceptada.
   Excluye bloqueos y perfiles ocultos antes de paginar.
+- Cada conexión aceptada identifica una conversación. Sus mensajes se guardan en
+  `chat_messages`, con paginación por ID creciente y clave de envío única por
+  remitente y conversación para reintentar sin duplicados. Solo los participantes
+  pueden leer o enviar. Enviar toma los mismos locks de pareja que bloquear, y
+  vuelve a comprobar aceptación y bloqueos después del lock.
 - Las mutaciones de conexiones y bloqueos toman locks de ambas filas de usuario en
   orden de UUID de PostgreSQL. Evitan carreras y deadlocks por orden inverso.
 - La identidad de un artista importado de Spotify se basa en su ID de Spotify.
@@ -101,7 +106,9 @@ emitidos pueden seguir siendo válidos hasta expirar. Véase [identidad](auth.md
   Spotify importa artistas, fotos y canciones destacadas tras la autorización y
   sincronización; Apple Music aún no importa gustos. Véase [proveedores](music-providers.md).
 - Sin uploads S3/R2: interfaz; no bean que finja almacenar archivos.
-- Sin workers activos, colas, chat, feed, push, pagos, ML ni embeddings.
+- El chat consulta novedades cada tres segundos solo con la pantalla activa;
+  WebSocket y notificaciones push quedan pendientes.
+- Sin workers activos, colas, feed, pagos, ML ni embeddings.
 - pgvector y tabla sin dimensión fija; definir modelo/versionado antes de índices.
 - RateLimitPolicy documenta el punto de integración; no limita tráfico todavía.
   Un despliegue público requiere rate limiting en gateway o filtro Redis.

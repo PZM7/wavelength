@@ -9,3 +9,6 @@ export type MusicAccount = { id: string; provider: 'SPOTIFY' | 'APPLE_MUSIC'; cr
 export type Connection = { id: string; requesterId: string; receiverId: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; createdAt: string; updatedAt: string; otherUser?: User | null };
 export type ConnectionPage = { connections: Connection[]; nextCursor: string | null };
 export type ReportReason = 'SPAM' | 'HARASSMENT' | 'IMPERSONATION' | 'OTHER';
+export type ChatConversation = { id: string; otherUser: User };
+export type ChatMessage = { id: string; senderId: string; body: string; createdAt: string };
+export type ChatMessagePage = { messages: ChatMessage[]; nextCursor: string | null };

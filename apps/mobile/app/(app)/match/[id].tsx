@@ -59,7 +59,7 @@ export default function MatchProfile() {
         <Button secondary label="Rechazar solicitud" disabled={respond.isPending} onPress={() => respond.mutate({ connectionId: connection.id, response: 'reject' })} />
       </>}
       {connection?.status === 'PENDING' && connection.requesterId !== id && <Card><Body>Solicitud enviada. Esperando respuesta.</Body></Card>}
-      {connection?.status === 'ACCEPTED' && <Card><Body>Ya estáis conectados.</Body></Card>}
+      {connection?.status === 'ACCEPTED' && <Card><Body>Ya estáis conectados.</Body><Button label="Abrir chat" onPress={() => router.push({ pathname: '/(app)/conversation/[id]', params: { id: connection.id } })} /></Card>}
       {connection?.status === 'REJECTED' && <Card><Body>Esta solicitud fue rechazada.</Body></Card>}
       {(demo || (!connection && !connectionQuery.isPending && !connectionQuery.error)) && <Button label={connect.isSuccess ? 'Solicitud enviada' : `Conectar con ${name}`} disabled={demo || connect.isPending || connect.isSuccess} onPress={() => connect.mutate()} />}
       {demo && <Body style={local.small}>Las conexiones necesitan una sesión real.</Body>}

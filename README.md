@@ -162,7 +162,8 @@ destacadas de Spotify con fotos y portadas, Music DNA y matching basados en los
 artistas importados, conexión musical con Spotify PKCE y
 Apple Music MusicKit, cifrado de tokens y renovación Spotify,
 JWT, provisioning, perfil/validación, Flyway/constraints, catálogo canónico,
-afinidades, matching determinista paginado, bandeja de conexiones, bloqueos y
+afinidades, matching determinista paginado, chat persistente entre conexiones
+aceptadas, bandeja de conexiones, bloqueos y
 desbloqueos, reports, JSON logs,
 OpenAPI dev, health, tests PostgreSQL, UI navegable y cliente HTTP tipado.
 

@@ -35,8 +35,8 @@ export default function Connections() {
   const open = (item: Connection) => router.push({ pathname: '/(app)/match/[id]', params: { id: item.otherUser?.id ?? (item.requesterId === me.data?.id ? item.receiverId : item.requesterId) } });
 
   return <Screen header="Wavelength" right={<Button compact secondary label="Actualizar" onPress={() => void list.refetch()} />}>
-    <Eyebrow>PERSONAS</Eyebrow><Title>Tus conexiones.</Title>
-    <Body>Gestiona invitaciones y vuelve a encontrar a quienes comparten tu música.</Body>
+    <Eyebrow>CHAT Y CONEXIONES</Eyebrow><Title>Empieza una{ '\n' }conversación.</Title>
+    <Body>Acepta una invitación y habla con quienes comparten tu música.</Body>
     {mode === 'demo' && <Card><Body>Las solicitudes y conexiones aparecen aquí cuando entras con tu cuenta.</Body></Card>}
     {mode !== 'demo' && <QueryState pending={me.isPending} error={me.error} retry={() => void me.refetch()} />}
     <QueryState pending={list.isPending && mode !== 'demo'} error={list.error} retry={() => void list.refetch()} />
@@ -54,7 +54,7 @@ export default function Connections() {
       {outgoing.map(item => <Card key={item.id}><Body>Esperando respuesta de {name(item)}.</Body><Button secondary label="Ver perfil" onPress={() => open(item)} /></Card>)}
       <Eyebrow>CONECTADAS · {accepted.length}</Eyebrow>
       {accepted.length === 0 && <Body>Aún no tienes conexiones aceptadas.</Body>}
-      {accepted.map(item => <Card key={item.id}><Body>{name(item)}</Body><Button secondary label="Ver perfil" onPress={() => open(item)} /></Card>)}
+      {accepted.map(item => <Card key={item.id}><Body>{name(item)}</Body><Button label="Abrir chat" onPress={() => router.push({ pathname: '/(app)/conversation/[id]', params: { id: item.id } })} /><Button secondary label="Ver perfil" onPress={() => open(item)} /></Card>)}
       {list.hasNextPage && <Button secondary label="Ver más conexiones" disabled={list.isFetchingNextPage} onPress={() => void list.fetchNextPage()} />}
       <QueryState pending={false} error={respond.error} />
     </>}

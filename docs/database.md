@@ -14,6 +14,7 @@ UUID internos, defaults `gen_random_uuid()`. Sin dependencia de IDs musicales.
 | V6 | user_manual_artist_preferences; elección separada de las señales importadas |
 | V7 | music_account_artist_affinities; sincronización por cuenta musical |
 | V8 | fotos y enlaces de artistas Spotify; canciones destacadas por cuenta. Las preferencias manuales históricas se conservan pero dejan de usarse. |
+| V9 | chat_messages; texto de hasta 2000 caracteres, orden por bigint y reintentos únicos por conversación/remitente/clave de cliente |
 
 Índices cubren FKs, filtros por usuario/proveedor y ordenaciones de matching,
 solicitudes y conciertos. Nombres normalizados de artistas no son únicos: puede

@@ -18,7 +18,9 @@ Las pruebas Java usan PostgreSQL 17/pgvector con las migraciones Flyway reales.
 Cubren JWT, perfiles y privacidad, matching y Music DNA tras el arranque real con
 `dev` y `DEV_SEED_ENABLED=true` en una base recién creada,
 sincronización Spotify, separación de artistas homónimos con IDs distintos,
-conexiones en ambos sentidos, bandeja y bloqueos. El seed solo se activa en `dev`
+conexiones en ambos sentidos, bandeja, bloqueos y chat: acceso de participantes,
+mensajes persistentes, paginación, validación y reintentos sin duplicados.
+El seed solo se activa en `dev`
 con `DEV_SEED_ENABLED=true`; las cuentas musicales sintéticas no equivalen a una
 autorización Spotify.
 
@@ -33,9 +35,10 @@ dispositivo físico.
   sincronizar. Apple Music permite la autorización, pero aún no importa gustos.
 - Music DNA usa los artistas disponibles; las dimensiones y arquetipos no se
   calculan todavía.
-- La pestaña Conexiones muestra solicitudes y relaciones; aún no hay chat ni
-  notificaciones push de nuevas invitaciones. El usuario actualiza la bandeja al
-  abrirla o con el botón de actualización.
+- La pestaña Chat muestra solicitudes y relaciones y abre conversaciones entre
+  conexiones aceptadas. Los mensajes nuevos se consultan cada tres segundos con
+  la pantalla activa. No hay notificaciones push, adjuntos ni confirmaciones de
+  lectura. El usuario actualiza la bandeja al abrirla o con el botón de actualización.
 - El reporte se almacena, pero no existe una consola de moderación operativa.
 - No hay compilaciones nativas de distribución ni pruebas E2E autenticadas
   automatizadas en dispositivos.

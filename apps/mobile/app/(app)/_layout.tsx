@@ -11,9 +11,10 @@ export default function AppLayout() {
     <Tabs.Screen name="home" options={{ title: 'Inicio', tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={20} color={color} /> }} />
     <Tabs.Screen name="matches" options={{ title: 'Personas', tabBarIcon: ({ color }) => <Ionicons name="people-outline" size={20} color={color} /> }} />
     <Tabs.Screen name="music-dna" options={{ title: 'Onda', tabBarIcon: ({ color }) => <Ionicons name="pulse-outline" size={20} color={color} /> }} />
-    <Tabs.Screen name="chat" options={{ title: 'Conexiones', tabBarIcon: ({ color }) => <Ionicons name="people-circle-outline" size={20} color={color} /> }} />
+    <Tabs.Screen name="chat" options={{ title: 'Chat', tabBarIcon: ({ color }) => <Ionicons name="chatbubbles-outline" size={20} color={color} /> }} />
     <Tabs.Screen name="profile" options={{ title: 'Tú', tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={20} color={color} /> }} />
     <Tabs.Screen name="music-connection" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     <Tabs.Screen name="match/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+    <Tabs.Screen name="conversation/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
   </Tabs>;
 }

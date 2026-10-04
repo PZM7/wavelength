@@ -30,6 +30,9 @@ ningún token hasta configurar uno válido. No usar ID tokens como access tokens
 | GET | /connections?limit=20&cursor=… | 200 `{connections, nextCursor}` |
 | POST | /connections/{id}/accept | 200 conexión ACCEPTED |
 | POST | /connections/{id}/reject | 200 conexión REJECTED |
+| GET | /conversations/{connectionId} | 200 `{id, otherUser}`; solo participantes de conexión aceptada |
+| GET | /conversations/{connectionId}/messages?limit=50&before=… | 200 `{messages, nextCursor}` |
+| POST | /conversations/{connectionId}/messages | 201 mensaje persistido; reintentos idempotentes |
 | POST | /users/{id}/block | 204; idempotente |
 | DELETE | /users/{id}/block | 204; elimina solo bloqueo propio |
 | POST | /reports | 201 `{id}` |
@@ -95,6 +98,29 @@ en ambos sentidos; desbloquear no recrea ni reactiva conexiones.
 Reason: SPAM, HARASSMENT, IMPERSONATION, OTHER. Self-report: 400. Usuario inexistente:
 404. Se permite reportar después de bloquear. No hay endpoints de lectura de reports
 ni panel de moderación. Aplicar rate limiting antes de exponer públicamente.
+
+## Chat
+
+La conversación usa el UUID de la conexión aceptada. Un tercero, una conexión
+pendiente/rechazada o cualquier bloqueo en la pareja devuelve 404 al leer o enviar.
+Ocultar un perfil conserva el acceso para las conexiones aceptadas.
+Desbloquear no reactiva una conexión rechazada ni su chat.
+
+Enviar texto con una clave estable para reintentos:
+
+```json
+{"body":"¿Qué canción estás escuchando?","clientMessageId":"send-1728000000-a1"}
+```
+
+`body`: texto no vacío, máximo 2000 caracteres. `clientMessageId`: 1–80 letras,
+dígitos, guiones o guiones bajos. Repetir la clave con el mismo contenido devuelve
+el mensaje original; usarla con otro contenido devuelve 409. El remitente lo
+obtiene el servidor de la sesión autenticada.
+
+Cada mensaje contiene `id` (decimal en string), `senderId`, `body` y `createdAt`.
+Sin `before`, se devuelven los mensajes más recientes en orden cronológico;
+`nextCursor` carga los anteriores, también en orden cronológico. `limit`: 1–100.
+Los IDs se envían como strings para conservar la precisión del bigint en JavaScript.
 
 ## Errores
 
