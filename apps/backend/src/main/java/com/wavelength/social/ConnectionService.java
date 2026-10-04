@@ -113,6 +113,7 @@ SELECT c.*, u.id AS other_id, u.username AS other_username,
 FROM connections c
 JOIN users u ON u.id = CASE WHEN c.requester_id = ? THEN c.receiver_id ELSE c.requester_id END
 WHERE (c.requester_id = ? OR c.receiver_id = ?)
+AND (u.discoverable OR c.status = 'ACCEPTED')
 AND (?::uuid IS NULL OR c.id > ?::uuid)
 AND NOT EXISTS (SELECT 1 FROM blocks b WHERE
     (b.blocker_id = c.requester_id AND b.blocked_id = c.receiver_id)

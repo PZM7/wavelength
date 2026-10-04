@@ -432,6 +432,41 @@ JOIN music_accounts ma ON ma.id = aa.music_account_id WHERE ma.user_id = ?
     }
 
     @Test
+    void connectionListAppliesProfileVisibilityBeforePagination() throws Exception {
+        UUID alex = DevSeed.userId(2);
+        UUID nora = DevSeed.userId(3);
+        var rejected = connections.request(marc, lucia);
+        connections.respond(lucia, rejected.id(), com.wavelength.social.ConnectionStatus.REJECTED);
+        connections.request(marc, alex);
+        var accepted = connections.request(marc, nora);
+        connections.respond(nora, accepted.id(), com.wavelength.social.ConnectionStatus.ACCEPTED);
+        // Put hidden rows first so filtering after LIMIT would produce an empty page.
+        jdbc.update("UPDATE connections SET id = ? WHERE receiver_id = ?", UUID.fromString("00000000-0000-0000-0000-000000000001"), lucia);
+        jdbc.update("UPDATE connections SET id = ? WHERE receiver_id = ?", UUID.fromString("00000000-0000-0000-0000-000000000002"), alex);
+        jdbc.update("UPDATE connections SET id = ? WHERE receiver_id = ?", UUID.fromString("00000000-0000-0000-0000-000000000003"), nora);
+        for (UUID target : List.of(lucia, alex, nora)) {
+            jdbc.update("UPDATE users SET discoverable = false WHERE id = ?", target);
+        }
+        jdbc.update("UPDATE users SET username = 'hidden_current', display_name = 'Hidden current name', avatar_url = 'https://example.com/hidden-current.jpg' WHERE id = ?", lucia);
+        mvc.perform(get("/api/v1/users/" + lucia).with(asUser("marc")))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/users/" + alex).with(asUser("marc")))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/users/" + nora).with(asUser("marc")))
+                .andExpect(status().isOk());
+        String body = mvc.perform(get("/api/v1/connections?limit=1").with(asUser("marc")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.connections.length()").value(1))
+                .andExpect(jsonPath("$.connections[0].status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.connections[0].otherUser.id").value(nora.toString()))
+                .andExpect(jsonPath("$.nextCursor").isEmpty())
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(body.contains("hidden_current"));
+        assertFalse(body.contains("Hidden current name"));
+        assertFalse(body.contains("hidden-current.jpg"));
+    }
+
+    @Test
     void blockingHidesBothDirectionsAndTerminatesExistingConnections() throws Exception {
         connections.request(marc, lucia);
         mvc.perform(post("/api/v1/users/" + lucia + "/block").with(asUser("marc")))

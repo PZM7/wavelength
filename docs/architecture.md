@@ -51,6 +51,9 @@ flowchart TD
   Bloquear rechaza conexiones previas; desbloquear no las restaura.
 - Solicitudes únicas por pareja para toda su vida útil, también tras rechazo.
   Reintentos tras rechazo se difieren para evitar spam y reglas de cooldown prematuras.
+- La bandeja de conexiones aplica la misma visibilidad que el perfil público:
+  solo incluye a la otra persona si es discoverable o la conexión está aceptada.
+  Excluye bloqueos y perfiles ocultos antes de paginar.
 - Las mutaciones de conexiones y bloqueos toman locks de ambas filas de usuario en
   orden de UUID de PostgreSQL. Evitan carreras y deadlocks por orden inverso.
 - La identidad de un artista importado de Spotify se basa en su ID de Spotify.
