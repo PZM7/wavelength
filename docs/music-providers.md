@@ -111,11 +111,11 @@ en Music DNA ni en las coincidencias.
 La demo no conecta proveedores ni llama al backend.
 
 Las pruebas locales cubren cifrado, rotación, estado de un solo uso, firma del
-developer token Apple y contratos HTTP de ambos proveedores. No se ha realizado
-una autorización musical real porque faltan credenciales Spotify/Apple Music.
-Antes de habilitar a usuarios: probar ambos consentimientos, retorno
-web y nativo, cancelación, renovación Spotify, reconexión Apple y desconexión con
-cuentas de prueba reales.
+developer token Apple y contratos HTTP de ambos proveedores. En desarrollo se han
+conectado cuentas reales de Spotify; el consentimiento Apple Music y los flujos
+nativos aún necesitan pruebas con credenciales y dispositivos reales.
+Antes de habilitar a más usuarios: probar consentimiento, retorno web y nativo,
+cancelación, renovación Spotify, reconexión Apple y desconexión.
 
 Referencias: [Spotify PKCE](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow),
 [redirect URI](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri),

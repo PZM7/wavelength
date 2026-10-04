@@ -6,4 +6,6 @@ export type MatchPage = { matches: Match[]; nextCursor: string | null };
 export type MusicDna = { status: 'INSUFFICIENT_DATA' | 'ARTIST_SIGNALS_ONLY' | 'DEMO'; archetype: string | null; scores: Record<string, number>; topArtists: { id: string; name: string; weight: number; imageUrl?: string | null; spotifyUrl?: string | null }[] };
 export type TopTrack = { id: string; title: string; artistName: string; rank: number; imageUrl: string | null; spotifyUrl: string | null };
 export type MusicAccount = { id: string; provider: 'SPOTIFY' | 'APPLE_MUSIC'; createdAt: string };
-export type Connection = { id: string; requesterId: string; receiverId: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; createdAt: string; updatedAt: string };
+export type Connection = { id: string; requesterId: string; receiverId: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; createdAt: string; updatedAt: string; otherUser?: User | null };
+export type ConnectionPage = { connections: Connection[]; nextCursor: string | null };
+export type ReportReason = 'SPAM' | 'HARASSMENT' | 'IMPERSONATION' | 'OTHER';

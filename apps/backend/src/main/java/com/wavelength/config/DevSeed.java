@@ -81,14 +81,23 @@ public class DevSeed implements ApplicationRunner {
         for (int user = 0; user < signals.length; user++) {
             UUID targetId = seededUsers.get(user);
             if (targetId == null) continue;
+            UUID accountId = UUID.fromString("00000000-0000-0000-0000-00000000030" + (user + 1));
+            jdbc.update("""
+INSERT INTO music_accounts (id, user_id, provider, provider_user_id)
+VALUES (?, ?, 'SPOTIFY', ?) ON CONFLICT DO NOTHING
+""", accountId, targetId, "dev-seed-" + user);
+            boolean seededAccount = Boolean.TRUE.equals(jdbc.queryForObject(
+                    "SELECT EXISTS(SELECT 1 FROM music_accounts WHERE id = ? AND user_id = ?)",
+                    Boolean.class, accountId, targetId));
+            if (!seededAccount) continue;
             for (int artist = 0; artist < signals[user].length; artist++) {
                 double weight = signals[user][artist];
                 jdbc.update(
                         """
-INSERT INTO user_artist_affinities (user_id, artist_id, short_term_score, medium_term_score, long_term_score)
+INSERT INTO music_account_artist_affinities (music_account_id, artist_id, short_term_score, medium_term_score, long_term_score)
 VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING
 """,
-                        targetId,
+                        accountId,
                         artistId(artist),
                         weight,
                         weight,

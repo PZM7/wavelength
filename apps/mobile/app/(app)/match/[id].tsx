@@ -1,19 +1,20 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useApi } from '../../../src/api/useApi';
 import { useSession } from '../../../src/features/auth/SessionProvider';
 import { demoMatches } from '../../../src/features/demo/data';
-import type { MatchPage } from '../../../src/types/models';
+import type { MatchPage, ReportReason } from '../../../src/types/models';
 import { ApiError } from '../../../src/api/http';
-import { Screen, Title, Body, Card, Button, Avatar, QueryState, Eyebrow, colors } from '../../../src/components/ui';
+import { Screen, Title, Body, Card, Button, Pill, Avatar, QueryState, Eyebrow, colors } from '../../../src/components/ui';
 
 export default function MatchProfile() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : '';
   const api = useApi(); const session = useSession(); const queries = useQueryClient();
+  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const query = useQuery({ queryKey: ['user', id], queryFn: () => api.user(id), enabled: Boolean(id) });
   const demo = session.mode === 'demo';
   const connectionQuery = useQuery({ queryKey: ['connection', id], queryFn: () => api.connectionWith(id), enabled: Boolean(id) && !demo });
@@ -25,8 +26,11 @@ export default function MatchProfile() {
   const block = useMutation({ mutationFn: () => api.block(id), onSuccess: async () => {
     queries.removeQueries({ queryKey: ['user', id] });
     await queries.invalidateQueries({ queryKey: ['matches'] });
+    await queries.invalidateQueries({ queryKey: ['connections'] });
+    await queries.invalidateQueries({ queryKey: ['blocked-users'] });
     router.replace('/(app)/matches');
   } });
+  const report = useMutation({ mutationFn: (reason: ReportReason) => api.report(id, reason) });
   const connection = connectionQuery.data;
   const cached = queries.getQueryData<InfiniteData<MatchPage>>(['matches']);
   const match = (demo ? demoMatches.matches : cached?.pages.flatMap(page => page.matches) ?? []).find(item => item.user.id === id);
@@ -60,7 +64,17 @@ export default function MatchProfile() {
       {(demo || (!connection && !connectionQuery.isPending && !connectionQuery.error)) && <Button label={connect.isSuccess ? 'Solicitud enviada' : `Conectar con ${name}`} disabled={demo || connect.isPending || connect.isSuccess} onPress={() => connect.mutate()} />}
       {demo && <Body style={local.small}>Las conexiones necesitan una sesión real.</Body>}
       <Button secondary label="Bloquear perfil" disabled={demo || block.isPending} onPress={() => block.mutate()} />
-      <QueryState pending={false} error={(connect.error instanceof ApiError && connect.error.status === 409 ? null : connect.error) ?? respond.error ?? block.error} />
+      {!demo && !report.isSuccess && <Card>
+        <Body>¿Necesitas reportar este perfil?</Body>
+        <Button secondary label={reportReason ? 'Ocultar motivos' : 'Reportar perfil'} onPress={() => setReportReason(reportReason ? null : 'SPAM')} />
+        {reportReason && <>
+          <View style={local.reportReasons}>{([['SPAM', 'Spam'], ['HARASSMENT', 'Acoso'], ['IMPERSONATION', 'Suplantación'], ['OTHER', 'Otro']] as const).map(([reason, label]) =>
+            <Pill key={reason} label={label} selected={reportReason === reason} onPress={() => setReportReason(reason)} />)}</View>
+          <Button label="Enviar reporte" disabled={report.isPending} onPress={() => report.mutate(reportReason)} />
+        </>}
+      </Card>}
+      {report.isSuccess && <Card><Body>Reporte enviado. Gracias por avisarnos.</Body></Card>}
+      <QueryState pending={false} error={(connect.error instanceof ApiError && connect.error.status === 409 ? null : connect.error) ?? respond.error ?? block.error ?? report.error} />
     </>}
   </Screen>;
 }
@@ -83,4 +97,5 @@ const local = StyleSheet.create({
   reasonCopy: { fontSize: 11 },
   shared: { paddingVertical: 10 },
   small: { fontSize: 11 },
+  reportReasons: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
 });

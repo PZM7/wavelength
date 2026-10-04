@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -34,5 +35,10 @@ public class PublicUserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unblock(@PathVariable UUID id) {
         privacy.unblock(current.get().getId(), id);
+    }
+
+    @GetMapping("/blocked")
+    public List<PublicUser> blockedUsers() {
+        return privacy.blockedUsers(current.get().getId());
     }
 }

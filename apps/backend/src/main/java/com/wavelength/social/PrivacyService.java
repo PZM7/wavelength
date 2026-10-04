@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.List;
 
 @Service
 public class PrivacyService {
@@ -94,5 +95,16 @@ WHERE (requester_id = ? AND receiver_id = ?) OR (requester_id = ? AND receiver_i
     public void unblock(UUID viewer, UUID target) {
         lockPair(viewer, target);
         jdbc.update("DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?", viewer, target);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PublicUser> blockedUsers(UUID viewer) {
+        return jdbc.query("""
+SELECT u.id, u.username, u.display_name, u.avatar_url
+FROM blocks b JOIN users u ON u.id = b.blocked_id
+WHERE b.blocker_id = ? ORDER BY b.created_at DESC, u.id
+""", (rs, index) -> new PublicUser(rs.getObject("id", UUID.class),
+                rs.getString("username"), rs.getString("display_name"),
+                rs.getString("avatar_url")), viewer);
     }
 }

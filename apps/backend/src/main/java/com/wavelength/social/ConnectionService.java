@@ -1,6 +1,7 @@
 package com.wavelength.social;
 
 import com.wavelength.common.ApiException;
+import com.wavelength.users.PublicUser;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -107,7 +108,11 @@ SELECT c.* FROM connections c WHERE
         var rows =
                 jdbc.query(
                         """
-SELECT c.* FROM connections c WHERE (c.requester_id = ? OR c.receiver_id = ?)
+SELECT c.*, u.id AS other_id, u.username AS other_username,
+       u.display_name AS other_display_name, u.avatar_url AS other_avatar_url
+FROM connections c
+JOIN users u ON u.id = CASE WHEN c.requester_id = ? THEN c.receiver_id ELSE c.requester_id END
+WHERE (c.requester_id = ? OR c.receiver_id = ?)
 AND (?::uuid IS NULL OR c.id > ?::uuid)
 AND NOT EXISTS (SELECT 1 FROM blocks b WHERE
     (b.blocker_id = c.requester_id AND b.blocked_id = c.receiver_id)
@@ -121,7 +126,12 @@ ORDER BY c.id LIMIT ?
                                         rs.getObject("receiver_id", UUID.class),
                                         ConnectionStatus.valueOf(rs.getString("status")),
                                         rs.getTimestamp("created_at").toInstant(),
-                                        rs.getTimestamp("updated_at").toInstant()),
+                                        rs.getTimestamp("updated_at").toInstant(),
+                                        new PublicUser(rs.getObject("other_id", UUID.class),
+                                                rs.getString("other_username"),
+                                                rs.getString("other_display_name"),
+                                                rs.getString("other_avatar_url"))),
+                        viewer,
                         viewer,
                         viewer,
                         cursor,

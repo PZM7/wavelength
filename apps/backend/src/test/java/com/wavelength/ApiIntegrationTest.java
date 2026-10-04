@@ -147,23 +147,6 @@ class ApiIntegrationTest {
         new DevSeed(jdbc, "dev|marc").run(new DefaultApplicationArguments());
     }
 
-    private void seedImportedTaste() {
-        for (int index = 0; index < 4; index++) {
-            UUID userId = DevSeed.userId(index);
-            UUID accountId = UUID.randomUUID();
-            jdbc.update("""
-                    INSERT INTO music_accounts (id, user_id, provider, provider_user_id)
-                    VALUES (?, ?, 'SPOTIFY', ?)
-                    """, accountId, userId, "test-synced-" + index);
-            jdbc.update("""
-                    INSERT INTO music_account_artist_affinities
-                        (music_account_id, artist_id, short_term_score, medium_term_score, long_term_score)
-                    SELECT ?, artist_id, short_term_score, medium_term_score, long_term_score
-                    FROM user_artist_affinities WHERE user_id = ?
-                    """, accountId, userId);
-        }
-    }
-
     @Test
     void healthPublicPrivateRoutesRequireAuthAndProductionDocsDisabled() throws Exception {
         mvc.perform(get("/api/v1/health"))
@@ -284,7 +267,15 @@ class ApiIntegrationTest {
 
     @Test
     void rankedSqlMatchesMetricAndPaginatesWithoutDuplicates() throws Exception {
-        seedImportedTaste();
+        new DevSeed(jdbc, "dev|marc").run(new DefaultApplicationArguments());
+        assertEquals(28, jdbc.queryForObject("SELECT count(*) FROM music_account_artist_affinities", Integer.class));
+        mvc.perform(get("/api/v1/me/music-accounts").with(asUser("marc")))
+                .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("marc")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.topArtists.length()").value(7));
+        mvc.perform(get("/api/v1/matches").with(asUser("marc")))
+                .andExpect(jsonPath("$.matches.length()").value(3));
         var all = matches.findTopMatches(marc, 50);
         assertEquals(3, all.matches().size());
         assertEquals(lucia, all.matches().getFirst().user().id());
@@ -303,6 +294,45 @@ class ApiIntegrationTest {
                 .andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/matches?cursor=bad").with(asUser("marc")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void devSeedDoesNotReplaceAnExistingSpotifyAccount() {
+        jdbc.update("DELETE FROM music_accounts WHERE user_id = ? AND provider = 'SPOTIFY'", marc);
+        jdbc.update("INSERT INTO music_accounts (user_id, provider, provider_user_id) VALUES (?, 'SPOTIFY', 'real-account')", marc);
+        new DevSeed(jdbc, "dev|marc").run(new DefaultApplicationArguments());
+        assertEquals("real-account", jdbc.queryForObject(
+                "SELECT provider_user_id FROM music_accounts WHERE user_id = ? AND provider = 'SPOTIFY'",
+                String.class, marc));
+        assertEquals(0, jdbc.queryForObject("""
+SELECT count(*) FROM music_account_artist_affinities aa
+JOIN music_accounts ma ON ma.id = aa.music_account_id WHERE ma.user_id = ?
+""", Integer.class, marc));
+    }
+
+    @Test
+    void spotifyArtistsWithSameNameKeepSeparateProviderIdentityAndArtwork() throws Exception {
+        for (String subject : List.of("homonym-one", "homonym-two")) {
+            mvc.perform(get("/api/v1/me").with(asUser(subject))).andExpect(status().isOk());
+        }
+        UUID first = jdbc.queryForObject("SELECT id FROM users WHERE external_auth_id = ?", UUID.class,
+                "dev|homonym-one");
+        UUID second = jdbc.queryForObject("SELECT id FROM users WHERE external_auth_id = ?", UUID.class,
+                "dev|homonym-two");
+        var firstAccount = musicAccounts.saveAndFlush(new MusicAccount(first, MusicProvider.SPOTIFY, "homonym-account-one"));
+        var secondAccount = musicAccounts.saveAndFlush(new MusicAccount(second, MusicProvider.SPOTIFY, "homonym-account-two"));
+        spotifyTaste.replace(first, firstAccount.getId(), List.of(new SpotifyTasteSyncService.ArtistScores(
+                "homonym-spotify-one", "Same Name", 1, 0, 0,
+                "https://example.com/one.jpg", null)), List.of());
+        spotifyTaste.replace(second, secondAccount.getId(), List.of(new SpotifyTasteSyncService.ArtistScores(
+                "homonym-spotify-two", "Same Name", 1, 0, 0,
+                "https://example.com/two.jpg", null)), List.of());
+        assertEquals(2, jdbc.queryForObject("SELECT count(DISTINCT artist_id) FROM provider_artists WHERE provider_artist_id LIKE 'homonym-spotify-%'", Integer.class));
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("homonym-one")))
+                .andExpect(jsonPath("$.topArtists[0].imageUrl").value("https://example.com/one.jpg"));
+        mvc.perform(get("/api/v1/me/music-dna").with(asUser("homonym-two")))
+                .andExpect(jsonPath("$.topArtists[0].imageUrl").value("https://example.com/two.jpg"));
+        assertEquals(0, matches.calculateCompatibility(first, second));
     }
 
     @Test
@@ -327,7 +357,6 @@ class ApiIntegrationTest {
 
     @Test
     void spotifySyncReplacesOnlyImportedTasteAndDisconnectRemovesIt() throws Exception {
-        seedImportedTaste();
         mvc.perform(get("/api/v1/me").with(asUser("spotify-sync"))).andExpect(status().isOk());
         UUID userId = jdbc.queryForObject("SELECT id FROM users WHERE external_auth_id = ?", UUID.class,
                 "dev|spotify-sync");
@@ -347,7 +376,7 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$[0].title").value("Spirit 2.0"))
                 .andExpect(jsonPath("$[0].imageUrl").value("https://i.scdn.co/image/spirit"));
         mvc.perform(get("/api/v1/matches").with(asUser("spotify-sync")))
-                .andExpect(jsonPath("$.matches[0].reasons[0].count").value(1));
+                .andExpect(jsonPath("$.matches.length()").value(0));
 
         spotifyTaste.replace(userId, account.getId(), List.of(
                 new SpotifyTasteSyncService.ArtistScores("spotify-massive", "Massive Attack", 1, 0.5, 0)),
@@ -380,6 +409,10 @@ class ApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andExpect(jsonPath("$.requesterId").value(marc.toString()));
+        mvc.perform(get("/api/v1/connections").with(asUser("lucia")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.connections[0].otherUser.id").value(marc.toString()))
+                .andExpect(jsonPath("$.connections[0].otherUser.displayName").value("Marc"));
         mvc.perform(post("/api/v1/connections/" + marc).with(asUser("lucia")))
                 .andExpect(status().isConflict());
         mvc.perform(post("/api/v1/connections/" + id + "/accept").with(asUser("marc")))
@@ -403,6 +436,11 @@ class ApiIntegrationTest {
         connections.request(marc, lucia);
         mvc.perform(post("/api/v1/users/" + lucia + "/block").with(asUser("marc")))
                 .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/users/blocked").with(asUser("marc")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(lucia.toString()));
+        mvc.perform(get("/api/v1/users/blocked").with(asUser("lucia")))
+                .andExpect(jsonPath("$.length()").value(0));
         assertFalse(
                 matches.findTopMatches(marc, 50).matches().stream()
                         .anyMatch(match -> match.user().id().equals(lucia)));
@@ -432,8 +470,8 @@ class ApiIntegrationTest {
                         .anyMatch(match -> match.user().id().equals(lucia)));
         jdbc.update(
                 """
-INSERT INTO music_accounts (user_id, provider, provider_user_id, access_token_encrypted)
-VALUES (?, 'SPOTIFY', 'provider-user', 'encrypted-test-fixture')
+UPDATE music_accounts SET access_token_encrypted = 'encrypted-test-fixture',
+    provider_user_id = 'provider-user' WHERE user_id = ? AND provider = 'SPOTIFY'
 """,
                 marc);
         String body =
@@ -455,8 +493,8 @@ VALUES (?, 'SPOTIFY', 'provider-user', 'encrypted-test-fixture')
                 DataIntegrityViolationException.class,
                 () ->
                         jdbc.update(
-                                "UPDATE user_artist_affinities SET short_term_score = 1.1 WHERE"
-                                    + " user_id = ?",
+                                "UPDATE music_account_artist_affinities SET short_term_score = 1.1 WHERE"
+                                    + " music_account_id = (SELECT id FROM music_accounts WHERE user_id = ? AND provider = 'SPOTIFY')",
                                 marc));
         jdbc.update(
                 "INSERT INTO connections (requester_id, receiver_id, status) VALUES (?, ?,"

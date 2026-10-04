@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useSession } from '../features/auth/SessionProvider';
 import { createHttpClient } from './http';
 import type { MatchPageDto } from './contracts';
-import type { Profile, ProfilePatch, MusicAccount, MusicDna, TopTrack, User, Connection, MatchPage } from '../types/models';
+import type { Profile, ProfilePatch, MusicAccount, MusicDna, TopTrack, User, Connection, ConnectionPage, ReportReason, MatchPage } from '../types/models';
 import { demoProfile, demoMatches, demoDna } from '../features/demo/data';
 
 export function useApi() {
@@ -58,7 +58,11 @@ export function useApi() {
         realOnly();
         return http(`/api/v1/connections/${encodeURIComponent(id)}/${response}`, { method: 'POST' });
       },
+      connections: (cursor?: string): Promise<ConnectionPage> => demo ? Promise.resolve({ connections: [], nextCursor: null }) : http(`/api/v1/connections?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`),
       block: (id: string): Promise<void> => { realOnly(); return http(`/api/v1/users/${encodeURIComponent(id)}/block`, { method: 'POST' }); },
+      unblock: (id: string): Promise<void> => { realOnly(); return http(`/api/v1/users/${encodeURIComponent(id)}/block`, { method: 'DELETE' }); },
+      blockedUsers: (): Promise<User[]> => demo ? Promise.resolve([]) : http('/api/v1/users/blocked'),
+      report: (id: string, reason: ReportReason): Promise<void> => { realOnly(); return http('/api/v1/reports', { method: 'POST', body: JSON.stringify({ reportedUserId: id, reason }) }); },
     };
   }, [session.mode, session.signOut]);
 }

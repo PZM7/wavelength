@@ -66,8 +66,8 @@ En Expo pulsa `w` para web, `a` para Android, o escanea QR con una versión comp
 En dispositivo físico usa la IP LAN del ordenador en EXPO_PUBLIC_API_URL; en emulador
 Android `http://10.0.2.2:8080`. El servidor debe ser accesible por la red del dispositivo.
 La app ofrece demo sin cuenta y señala los datos ficticios. El acceso con Google
-está implementado, pero necesita un proyecto Supabase para activarse. Consultar
-[identidad y sesión](docs/auth.md) para la configuración y las pruebas pendientes.
+usa Supabase Auth; cada instalación necesita sus variables locales. Consultar
+[identidad y sesión](docs/auth.md) para configurarlo.
 
 ## Backend fuera de Docker
 
@@ -120,7 +120,10 @@ para probar `/me` y `/matches`.
 
 Seed: editar `.env` y poner DEV_SEED_ENABLED=true, opcionalmente el subject real de
 Marc **antes del primer seed**, después `docker compose up -d`. Usuarios: Marc,
-Lucía, Alex, Nora; siete artistas y afinidades. No ejecutar en producción.
+Lucía, Alex, Nora; siete artistas y afinidades en cuentas Spotify sintéticas. Esos
+datos alimentan `/matches` y Music DNA sin sincronización real. No representan una
+conexión OAuth; al conectar Spotify con credenciales reales se reemplaza la cuenta
+sintética de ese usuario. No ejecutar el seed en producción.
 No hay comando de reseteo destructivo automático; `docker compose down` conserva datos.
 
 ## Verificación
@@ -157,9 +160,10 @@ para resultados comprobados y límites.
 **Real:** Google OAuth y renovación de sesión, sincronización de artistas y canciones
 destacadas de Spotify con fotos y portadas, Music DNA y matching basados en los
 artistas importados, conexión musical con Spotify PKCE y
-Apple Music MusicKit, cifrado de tokens y renovación Spotify (pendientes de credenciales reales),
+Apple Music MusicKit, cifrado de tokens y renovación Spotify,
 JWT, provisioning, perfil/validación, Flyway/constraints, catálogo canónico,
-afinidades, matching determinista paginado, conexiones, bloqueos, reports, JSON logs,
+afinidades, matching determinista paginado, bandeja de conexiones, bloqueos y
+desbloqueos, reports, JSON logs,
 OpenAPI dev, health, tests PostgreSQL, UI navegable y cliente HTTP tipado.
 
 **Stub/reserva explícita:** sincronización de gustos Apple Music y arquetipos DNA,
@@ -172,9 +176,9 @@ Decisiones/deuda: [arquitectura](docs/architecture.md), [base de datos](docs/dat
 
 ## Siguientes cinco pasos
 
-1. Crear proyecto Supabase, configurar Google y verificar login/refresh en dispositivo.
-2. Configurar credenciales Spotify/Apple y probar ambos consentimientos en web y dispositivo.
-3. Probar la sincronización Spotify con cuentas reales y completar la de Apple Music.
+1. Verificar login/refresh de Google en dispositivos físicos.
+2. Completar la sincronización de gustos de Apple Music.
+3. Probar consentimiento Spotify y Apple Music en dispositivos físicos.
 4. Validar experiencia con dispositivos reales y añadir tests E2E del flujo autenticado.
 5. Preparar piloto privado: rate limiting, moderación, retención/borrado de datos,
    observabilidad conectada y medición del coste del matching.

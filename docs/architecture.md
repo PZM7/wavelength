@@ -53,6 +53,9 @@ flowchart TD
   Reintentos tras rechazo se difieren para evitar spam y reglas de cooldown prematuras.
 - Las mutaciones de conexiones y bloqueos toman locks de ambas filas de usuario en
   orden de UUID de PostgreSQL. Evitan carreras y deadlocks por orden inverso.
+- La identidad de un artista importado de Spotify se basa en su ID de Spotify.
+  Coincidir solo en el nombre no justifica unir dos artistas canónicos; una
+  reconciliación entre proveedores requerirá evidencia adicional.
 
 ## Matching explicable
 
@@ -85,15 +88,15 @@ y reintenta una vez; si sigue fallando, elimina la sesión.
 
 La demo contiene fixtures aislados, banner visible y ninguna mutación al backend.
 Supabase Auth gestiona Google OAuth, persistencia y renovación; el backend solo
-valida firma y claims del access token. La configuración real del proyecto está
-pendiente. Cerrar sesión usa el alcance local de Supabase; los access tokens
+valida firma y claims del access token. Cerrar sesión usa el alcance local de
+Supabase; los access tokens
 emitidos pueden seguir siendo válidos hasta expirar. Véase [identidad](auth.md).
 
 ## Límites conscientes
 
-- Conexiones musicales y cifrado AES-GCM implementados, pero sin credenciales reales
-  ni KMS administrado. Los adaptadores de importación de gustos siguen vacíos; la
-  autorización por sí sola no genera afinidades. Véase [proveedores](music-providers.md).
+- Conexiones musicales y cifrado AES-GCM implementados, pero sin KMS administrado.
+  Spotify importa artistas, fotos y canciones destacadas tras la autorización y
+  sincronización; Apple Music aún no importa gustos. Véase [proveedores](music-providers.md).
 - Sin uploads S3/R2: interfaz; no bean que finja almacenar archivos.
 - Sin workers activos, colas, chat, feed, push, pagos, ML ni embeddings.
 - pgvector y tabla sin dimensión fija; definir modelo/versionado antes de índices.

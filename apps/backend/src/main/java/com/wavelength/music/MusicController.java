@@ -27,6 +27,7 @@ public class MusicController {
     @GetMapping("/music-accounts")
     public List<MusicAccountResponse> accounts() {
         return credentials.listForUser(current.get().getId()).stream()
+                .filter(account -> account.getAccessTokenEncrypted() != null)
                 .map(
                         account ->
                                 new MusicAccountResponse(

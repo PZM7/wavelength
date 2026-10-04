@@ -1,11 +1,9 @@
 package com.wavelength.music;
 
 import com.wavelength.common.ApiException;
-import java.text.Normalizer;
 import java.time.Instant;
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -82,19 +80,11 @@ public class SpotifyTasteSyncPersistence {
             return mapped.getFirst();
         }
 
-        String normalized = Normalizer.normalize(name, Normalizer.Form.NFKC)
-                .strip().replaceAll("[\\p{Z}\\s]+", " ").toLowerCase(Locale.ROOT);
-        jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", Object.class,
-                "artist-name:" + normalized);
-        var existing = jdbc.query("""
-                SELECT id FROM artists WHERE normalized_name = ? ORDER BY created_at, id LIMIT 1
-                """, (rs, row) -> rs.getObject(1, UUID.class), normalized);
-        UUID id;
-        if (existing.isEmpty()) {
-            id = UUID.randomUUID();
-            jdbc.update("INSERT INTO artists (id, name, normalized_name) VALUES (?, ?, ?)",
-                    id, name, normalized);
-        } else id = existing.getFirst();
+        String normalized = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFKC)
+                .strip().replaceAll("[\\p{Z}\\s]+", " ").toLowerCase(java.util.Locale.ROOT);
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO artists (id, name, normalized_name) VALUES (?, ?, ?)",
+                id, name, normalized);
         jdbc.update("""
                 INSERT INTO provider_artists (artist_id, provider, provider_artist_id, image_url, spotify_url)
                 VALUES (?, 'SPOTIFY', ?, ?, ?)
