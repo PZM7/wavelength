@@ -15,7 +15,8 @@ npm run export --workspace @wavelength/mobile
 ```
 
 Las pruebas Java usan PostgreSQL 17/pgvector con las migraciones Flyway reales.
-Cubren JWT, perfiles y privacidad, matching y Music DNA con el seed recién creado,
+Cubren JWT, perfiles y privacidad, matching y Music DNA tras el arranque real con
+`dev` y `DEV_SEED_ENABLED=true` en una base recién creada,
 sincronización Spotify, separación de artistas homónimos con IDs distintos,
 conexiones en ambos sentidos, bandeja y bloqueos. El seed solo se activa en `dev`
 con `DEV_SEED_ENABLED=true`; las cuentas musicales sintéticas no equivalen a una
